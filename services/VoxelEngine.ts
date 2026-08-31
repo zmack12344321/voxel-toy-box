@@ -153,6 +153,11 @@ export class VoxelEngine {
     this.stateManager.voxels = voxels;
     this.stateManager.rebuildTargets = targets;
     this.physics.rebuildStartTime = performance.now();
+    
+    // Ensure InstancedMesh capacity buffer is allocated to render all target voxels
+    this.meshLifecycle.ensureDynamicPhysicsCapacity(
+      this.sceneSetup.scene, voxels.length, this.wireframe, this.shadows
+    );
     this.meshLifecycle.drawDynamicPhysics(this.stateManager.voxels);
     this.meshLifecycle.updateVisibility(this.stateManager.voxels.length, this.renderMode, this.state, this.onStatsChange);
 

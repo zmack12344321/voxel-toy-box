@@ -127,6 +127,22 @@ export class MeshLifecycleManager {
     scene.add(this.dynamicPhysicsMesh);
   }
 
+  ensureDynamicPhysicsCapacity(scene: THREE.Scene, requiredCapacity: number, wireframe: boolean, shadows: boolean) {
+    if (!this.dynamicPhysicsMesh || this.dynamicPhysicsMesh.count < requiredCapacity) {
+      if (this.dynamicPhysicsMesh) {
+        scene.remove(this.dynamicPhysicsMesh);
+        this.dynamicPhysicsMesh.dispose();
+      }
+      const geo = new THREE.BoxGeometry(0.92, 0.92, 0.92);
+      const mat = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.12, wireframe });
+      this.dynamicPhysicsMesh = new THREE.InstancedMesh(geo, mat, Math.max(requiredCapacity, 100));
+      this.dynamicPhysicsMesh.castShadow = shadows;
+      this.dynamicPhysicsMesh.receiveShadow = shadows;
+      this.dynamicPhysicsMesh.visible = false;
+      scene.add(this.dynamicPhysicsMesh);
+    }
+  }
+
   buildMergedMesh(scene: THREE.Scene, data: VoxelData[], wireframe: boolean, shadows: boolean) {
     if (this.mergedMesh) {
       scene.remove(this.mergedMesh);
