@@ -84,9 +84,8 @@ Single-element building blocks. Foundation for all complex structures.
 
 ## Implementation Notes
 
-- All use `DeclarativeShapeCommand` ops from `declarativeTypes.ts`
+- All use `DeclarativeShapeCommand` ops from [`models/declarativeTypes.ts`](../models/declarativeTypes.ts)
+- Standardized rasterizer compiled via [`services/rasterizer/index.ts`](../services/rasterizer/index.ts)
 - `repeat` and `radialRepeat` for repeated elements
 - `accents` for lanterns, flags, decorative details
-- Each pack should be a standalone preset function returning `VoxelData[]`
-- Basic primitives (#1-14) are single-op, no composition needed
-- Complex packs (#32-53) compose multiple primitives
+- Maps to category `architecture` in [`models/types.ts`](../models/types.ts) and [`models/registry.ts`](../models/registry.ts)

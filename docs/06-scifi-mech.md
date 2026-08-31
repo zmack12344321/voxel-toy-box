@@ -20,6 +20,8 @@ Technology, robotics, and futuristic elements.
 | 14 | **Console Terminal** | box screen + box base + accents display | Interface |
 | 15 | **Shield Generator** | cylinder base + dome field + accents vertices | Defense |
 
-## Status
+## Codebase Integration
 
-All TODO. Each item = standalone preset function.
+- Category: `scifi_mech` in [`models/types.ts`](../models/types.ts) and [`models/registry.ts`](../models/registry.ts).
+- Presets: Includes built-in models such as `RobotPreset` (`models/presets/robot.ts`) and `SpaceshipPreset` (`models/presets/spaceship.ts`).
+- Uses `DeclarativeShapeCommand` ops from [`models/declarativeTypes.ts`](../models/declarativeTypes.ts).

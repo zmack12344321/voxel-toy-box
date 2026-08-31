@@ -1,6 +1,6 @@
 # Basic Primitives
 
-Standalone single-op items. Foundation for all complex compositions.
+Standalone single-op building blocks defined in [`models/declarativeTypes.ts`](../models/declarativeTypes.ts).
 
 ## Box Primitives
 
@@ -59,7 +59,7 @@ Standalone single-op items. Foundation for all complex compositions.
 | 31 | **Capsule (Long)** | capsule | from:[0,0,0], to:[0,4,0], radius:0.3 | Rod |
 | 32 | **Limb** | limb | from:[0,2,0], to:[4,3,0], radiusStart:0.5, radiusEnd:0.3 | Tapered arm |
 
-## Composite Primitives
+## Composite & Custom Primitives
 
 | # | Name | Op | Params | Notes |
 |---|------|----|--------|-------|
@@ -96,6 +96,6 @@ Standalone single-op items. Foundation for all complex compositions.
 | 48 | **Snow Patch** | snow | at:[0,0,0], size:[10,2,10] | Snow terrain |
 | 49 | **Forest Patch** | forest_floor | at:[0,0,0], size:[10,5,10] | Forest terrain |
 
-## Status
+## Implementation & Rasterizer Mapping
 
-All TODO. Each primitive = single op, minimal wrapper function.
+All primitives map directly to executable handlers in [`services/rasterizer/dispatcher.ts`](../services/rasterizer/dispatcher.ts) and types in [`models/declarativeTypes.ts`](../models/declarativeTypes.ts).

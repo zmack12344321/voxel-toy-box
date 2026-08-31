@@ -1,8 +1,14 @@
-# Voxel Asset Catalog
+# Voxel Toy Box — Documentation Index
+
+Documentation for project architecture, core engine services, and declarative LLM asset catalogs.
+
+## System Documentation
+
+- **[System Architecture & Overview](architecture.md)** — Project structure, core types (`types.ts`), configuration, `VoxelEngine` services, Zustand state management stores, component hierarchy, and data flow.
+
+## Declarative Asset Catalog
 
 Reference lists for declarative LLM generation. Each file = category of pre-composable assets.
-
-## Files
 
 | File | Category | Count | Description |
 |------|----------|-------|-------------|
@@ -38,24 +44,28 @@ Implementation order based on foundational importance:
 
 ## DSL Primitives Used
 
-All items use ops from `models/declarativeTypes.ts`:
-- Shapes: `box`, `cylinder`, `sphere`, `ellipsoid`, `cone`, `pyramid`, `wedge`, `ramp`, `capsule`, `limb`
-- Structural: `arch`, `doorway`, `stairs`, `spiral_stairs`, `ring`, `wheel`, `torus`, `dome`, `hemisphere`
-- Detail: `poly_prism`, `wing`, `fin`, `fence`, `railing`, `trim`, `bevel_edges`, `line`, `pipe`
-- Nature: `tree`, `foliage`, `terrain`, `noise_patch`, `water`, `water_surface`
-- Biomes: `desert`, `snow`, `forest_floor`
-- CSG: `carve_box`, `carve_sphere`, `carve_cylinder`
-- Modifiers: `repeat`, `radialRepeat`, `accents`
-- Mirror: `"none" | "x" | "z" | "xz"` on most commands
+All items use ops from [`models/declarativeTypes.ts`](../models/declarativeTypes.ts):
+- **Shapes:** `box`, `cylinder`, `sphere`, `ellipsoid`, `cone`, `pyramid`, `wedge`, `ramp`, `capsule`, `limb`
+- **Structural:** `arch`, `doorway`, `stairs`, `spiral_stairs`, `ring`, `wheel`, `torus`, `dome`, `hemisphere`
+- **Detail:** `poly_prism`, `polygon_extrude`, `wing`, `fin`, `fence`, `railing`, `trim`, `bevel_edges`, `line`, `pipe`
+- **Nature:** `tree`, `foliage`, `terrain`, `noise_patch`, `water`, `water_surface`
+- **Biomes:** `desert`, `snow`, `forest_floor` (via [`utils/biomeHelpers.ts`](../utils/biomeHelpers.ts))
+- **CSG:** `carve_box`, `carve_sphere`, `carve_cylinder`
+- **Modifiers:** `repeat`, `radialRepeat`, `accents`
+- **Mirroring:** `mirror: "none" | "x" | "z" | "xz"` on applicable commands
 
-## Workflow
+## Engine & Rasterizer Pipeline Integration
 
-1. LLM selects category items by ID
-2. Composes commands array from selected items
-3. Assigns palette from Palette Sets
-4. Wraps in `DeclarativeModelPayload`
-5. Engine compiles to voxels
+1. LLM selects category items or generates custom commands matching [`DeclarativeModelPayload`](../models/declarativeTypes.ts).
+2. Composes `commands` array with optional `palette` map.
+3. [`services/rasterizer/index.ts`](../services/rasterizer/index.ts) executes commands via `compileDeclarativePayload()`.
+4. Commands rasterize into a centered `VoxelData[]` array and extract optional `SceneWater` metadata for engine rendering.
+5. [`services/VoxelEngine.ts`](../services/VoxelEngine.ts) loads generated voxel model and water plane into Three.js scene.
 
-## Status
+## Codebase Model Categories
 
-All items = TODO. Total: ~560 assets to implement.
+Model presets in [`models/registry.ts`](../models/registry.ts) map to [`ModelCategory`](../models/types.ts):
+- `creatures` (Birds, animals, beasts)
+- `scifi_mech` (Robots, mechs, futuristic)
+- `architecture` (Castles, towers, buildings)
+- `objects` (Props, vehicles, gear, custom models)

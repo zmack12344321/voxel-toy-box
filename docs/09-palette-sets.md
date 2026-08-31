@@ -22,7 +22,7 @@ Named color palettes for consistent theming across models.
 
 ## Palette Key Mapping
 
-Maps to `palette` object in `DeclarativeModelPayload`:
+Maps to the `palette` object in [`DeclarativeModelPayload`](../models/declarativeTypes.ts):
 ```json
 {
   "primary": "#hex",
@@ -36,6 +36,4 @@ Maps to `palette` object in `DeclarativeModelPayload`:
 }
 ```
 
-## Status
-
-All TODO. Each palette = constant object for reuse.
+The rasterizer ([`services/rasterizer/index.ts`](../services/rasterizer/index.ts)) automatically resolves color key names (case-insensitive) to 24-bit integer values during compilation. Built-in voxel colors are defined in [`utils/voxelConstants.ts`](../utils/voxelConstants.ts) (`COLORS`).

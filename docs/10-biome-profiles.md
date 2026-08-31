@@ -22,13 +22,18 @@ Complete environment presets combining terrain, water, vegetation, and accents.
 
 ## Biome Composition Pattern
 
-Each biome = sequence of:
-1. Base terrain (terrain/desert/snow/forest_floor op)
-2. Water feature (water op, optional)
-3. Vegetation (tree ops, repeated)
-4. Accent details (accents op)
+Each biome is composed as a sequence of:
+1. Base terrain (`terrain`, `desert`, `snow`, `forest_floor` ops via [`utils/biomeHelpers.ts`](../utils/biomeHelpers.ts))
+2. Water feature (`water` / `water_surface` op, compiled to [`SceneWater`](../types.ts))
+3. Vegetation (`tree` / `foliage` ops, repeated)
+4. Accent details (`accents` op)
 5. Structural elements (optional packs from Structure Packs)
 
-## Status
+## Implementation Details
 
-All TODO. Each biome = composite preset function.
+The engine provides built-in procedural biome helper functions in [`utils/biomeHelpers.ts`](../utils/biomeHelpers.ts):
+- `desertTerrain()`: Sand terrain + dune bumps + ripple accents
+- `snowTerrain()`: Snow terrain + low drifts + ice boulder spheres
+- `forestFloor()`: Forest floor terrain + scattered trees + moss accents
+- `waterSurface()`: Water metadata command (rendered by Three.js Water shader)
+- `BIOME_PRESETS`: Palette constants for `desert`, `snow`, `forest_floor`, and `water`.
