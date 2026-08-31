@@ -1,0 +1,8 @@
+{
+  "name": "Remix Voxel Toy Box",
+  "description": "Create, visualize, and rebuild high-detail 3D voxel sculptures using modular model registries and AI sculpting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
