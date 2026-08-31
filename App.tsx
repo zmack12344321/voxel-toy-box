@@ -5,10 +5,9 @@
 
 import React, { useEffect, useRef } from 'react';
 import { VoxelEngine } from './services/VoxelEngine';
-import { UIOverlay } from './components/UIOverlay';
-import { ModelLibraryDrawer } from './components/ModelLibraryDrawer';
-import { JsonModal } from './components/JsonModal';
-import { PromptModal } from './components/PromptModal';
+import { UIOverlay } from './components/hud';
+import { ModelLibraryDrawer } from './components/library';
+import { JsonModal, PromptModal } from './components/modals';
 import { ModelRegistry } from './models/registry';
 import { useEngineStore, useUIStore } from './store';
 

@@ -50,46 +50,8 @@ export class InputHandler {
   }
 
   private onPointerUp(e: PointerEvent) {
-    // Only primary left-click (button === 0) on the 3D canvas itself can dismantle
-    if (e.button !== 0) return;
-    if (e.target !== this.domElement || this.pointerDownTarget !== this.domElement) return;
-
-    // Ignore clicks if any UI modal or drawer is open
-    const ui = useUIStore.getState();
-    if (ui.isModelLibraryOpen || ui.isJsonModalOpen || ui.isPromptModalOpen) return;
-
-    // If user dragged more than 6px, it was an orbit rotation, not a click
-    const dist = Math.hypot(e.clientX - this.pointerDownPos.x, e.clientY - this.pointerDownPos.y);
-    if (dist > 6) return;
-
-    const currentState = this.getState();
-    if (currentState !== 'STABLE') {
-      console.log(`[InputHandler] Click ignored — engine state is ${currentState}`);
-      return;
-    }
-
-    const rect = this.domElement.getBoundingClientRect();
-    const mouse = new THREE.Vector2(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1
-    );
-
-    this.raycaster.setFromCamera(mouse, this.camera);
-
-    const checkObjects = this.getVisibleMeshes();
-    if (checkObjects.length === 0) {
-      console.log('[InputHandler] Click ignored — no visible model meshes to raycast.');
-      return;
-    }
-
-    const intersects = this.raycaster.intersectObjects(checkObjects, true);
-    if (intersects.length > 0) {
-      const hitPoint = intersects[0].point;
-      console.log(`[InputHandler] Raycast hit block at (${hitPoint.x.toFixed(2)}, ${hitPoint.y.toFixed(2)}, ${hitPoint.z.toFixed(2)}). Triggering dismantle...`);
-      this.onDismantle(hitPoint);
-    } else {
-      console.log('[InputHandler] Click raycast missed 3D model.');
-    }
+    // Canvas pointer events are reserved for OrbitControls camera rotation & navigation.
+    // Dismantle is explicitly triggered via the "BREAK BLOCKS" button.
   }
 
   dispose() {

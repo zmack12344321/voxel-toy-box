@@ -4,10 +4,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, X, Loader2, Wand2, Hammer, Layers, Flame } from 'lucide-react';
+import { Sparkles, X, Loader2, Wand2, Hammer, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { modalBackdropVariants, modalDialogVariants } from '../theme/system';
-import { useUIStore, useEngineStore } from '../store';
+import { modalBackdropVariants, modalDialogVariants } from '../../../theme/system';
+import { useUIStore, useEngineStore } from '../../../store';
+import { InspirationChips } from './InspirationChips';
+import { QualitySelector, DetailLevel } from './QualitySelector';
 
 const INSPIRATION_SUGGESTIONS = {
   create: [
@@ -35,7 +37,7 @@ export const PromptModal: React.FC = () => {
   const isGenerating = useEngineStore((s) => s.isGenerating);
 
   const [prompt, setPrompt] = useState('');
-  const [detailLevel, setDetailLevel] = useState<'masterpiece' | 'detailed' | 'classic'>('masterpiece');
+  const [detailLevel, setDetailLevel] = useState<DetailLevel>('masterpiece');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -96,15 +98,15 @@ export const PromptModal: React.FC = () => {
                   {isCreate ? <Wand2 size={24} strokeWidth={2.5} /> : <Hammer size={24} strokeWidth={2.5} />}
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-slate-800">
+                  <h2 className="text-xl font-bold text-slate-800">
                     {isCreate ? 'Sculpt High-Detail 3D Model' : 'Rebuild & Morph Voxel Blocks'}
                   </h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-sky-500/10 text-sky-700">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold tracking-wider uppercase bg-sky-500/10 text-sky-700">
                       <Flame size={11} className="text-sky-600" /> GEMINI 3.7 HD
                     </span>
                     <span className="text-xs font-semibold text-slate-400">
-                      Composite Volumes & Shading
+                      • Creative AI Voxel Engine
                     </span>
                   </div>
                 </div>
@@ -135,53 +137,21 @@ export const PromptModal: React.FC = () => {
                       ? "e.g., A glowing cyberpunk samurai robot with twin katanas, or a medieval wizard tower on a floating crystal..."
                       : "e.g., Transform this into a sleek interstellar rocket with glowing blue thrusters..."}
                     disabled={isLoading}
-                    className={`w-full h-28 resize-none bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 font-medium text-slate-800 focus:outline-none focus:ring-4 transition-all placeholder:text-slate-400 ${isCreate ? 'focus:border-sky-400 focus:ring-sky-100' : 'focus:border-amber-400 focus:ring-amber-100'}`}
+                    className={`w-full h-28 resize-none bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 font-medium text-slate-800 focus:outline-hidden focus:ring-4 transition-all placeholder:text-slate-400 ${isCreate ? 'focus:border-sky-400 focus:ring-sky-100' : 'focus:border-amber-400 focus:ring-amber-100'}`}
                     autoFocus
                   />
 
-                  {/* Inspiration Chips */}
-                  <div className="mt-3">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                      Quick Ideas:
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {suggestions.map((s, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          disabled={isLoading}
-                          onClick={() => setPrompt(s)}
-                          className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95 transition-all text-left cursor-pointer"
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <InspirationChips
+                    suggestions={suggestions}
+                    disabled={isLoading}
+                    onSelect={(s) => setPrompt(s)}
+                  />
 
-                  {/* Detail Quality Selector */}
-                  <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                      <Layers size={15} />
-                      <span>Quality Target:</span>
-                    </div>
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                      {(['masterpiece', 'detailed', 'classic'] as const).map((lvl) => (
-                        <button
-                          key={lvl}
-                          type="button"
-                          onClick={() => setDetailLevel(lvl)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
-                            detailLevel === lvl
-                              ? 'bg-white text-slate-800 shadow-sm'
-                              : 'text-slate-500 hover:text-slate-800'
-                          }`}
-                        >
-                          {lvl}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <QualitySelector
+                    value={detailLevel}
+                    disabled={isLoading}
+                    onChange={(lvl) => setDetailLevel(lvl)}
+                  />
 
                   {error && (
                     <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold flex items-center gap-2">

@@ -5,15 +5,12 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { ViewHelper } from 'three/examples/jsm/helpers/ViewHelper.js';
 import { SceneTheme } from '../types';
 import { CONFIG } from '../utils/voxelConstants';
+import { THEME_PRESETS } from './presets/themePresets';
 
-export const THEME_PRESETS: Record<SceneTheme, { bg: number; floor: number; gridMain: number; gridSub: number; ambientIntensity: number; keyLightColor: number }> = {
-  light: { bg: 0xf0f2f5, floor: 0xdfe3e8, gridMain: 0xcfd8dc, gridSub: 0xe2e8f0, ambientIntensity: 0.6, keyLightColor: 0xffffff },
-  dark:  { bg: 0x111827, floor: 0x1f2937, gridMain: 0x374151, gridSub: 0x4b5563, ambientIntensity: 0.4, keyLightColor: 0xe5e7eb },
-  studio:{ bg: 0xfafafa, floor: 0xf5f5f5, gridMain: 0xe5e5e5, gridSub: 0xf5f5f5, ambientIntensity: 0.7, keyLightColor: 0xffffff },
-  dusk:  { bg: 0x1e1b4b, floor: 0x312e81, gridMain: 0x4338ca, gridSub: 0x6366f1, ambientIntensity: 0.35, keyLightColor: 0xfcd34d },
-};
+export { THEME_PRESETS };
 
 export class SceneSetup {
   scene: THREE.Scene;
@@ -29,6 +26,8 @@ export class SceneSetup {
   keyLightTarget: THREE.Object3D;
   fillLight: THREE.DirectionalLight;
   hemisphereLight: THREE.HemisphereLight;
+  viewHelper: ViewHelper;
+  private onGizmoPointerDown: (e: PointerEvent) => void;
 
   constructor(container: HTMLElement) {
     container.innerHTML = '';
@@ -107,6 +106,38 @@ export class SceneSetup {
 
     this.fogInstance = new THREE.Fog(CONFIG.BG_COLOR, 70, 160);
     this.scene.fog = this.fogInstance;
+
+    this.viewHelper = new ViewHelper(this.camera, this.renderer.domElement);
+    this.viewHelper.setLabels('X', 'Y', 'Z');
+
+    this.onGizmoPointerDown = (e: PointerEvent) => {
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      const dim = 128;
+      const rightOffset = 16;
+      const topOffset = 80;
+
+      const targetX = rect.width - dim - rightOffset;
+      const targetY = topOffset;
+
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      if (
+        clickX >= targetX && clickX <= targetX + dim &&
+        clickY >= targetY && clickY <= targetY + dim
+      ) {
+        const mappedX = rect.left + (rect.width - dim) + (clickX - targetX);
+        const mappedY = rect.top + (rect.height - dim) + (clickY - targetY);
+
+        const syntheticEvent = {
+          clientX: mappedX,
+          clientY: mappedY,
+        } as PointerEvent;
+
+        this.viewHelper.handleClick(syntheticEvent);
+      }
+    };
+    this.renderer.domElement.addEventListener('pointerdown', this.onGizmoPointerDown);
   }
 
   handleResize() {
@@ -117,6 +148,44 @@ export class SceneSetup {
     this.renderer.setSize(w, h);
   }
 
+  renderGizmo(delta: number) {
+    if (!this.viewHelper) return;
+
+    this.viewHelper.center.copy(this.controls.target);
+
+    if (this.viewHelper.animating) {
+      this.viewHelper.update(delta);
+    }
+
+    const containerW = this.renderer.domElement.clientWidth || window.innerWidth;
+    const containerH = this.renderer.domElement.clientHeight || window.innerHeight;
+    const dim = 128;
+    const rightOffset = 16;
+    const topOffset = 80;
+
+    const targetX = containerW - dim - rightOffset;
+    const targetY = containerH - dim - topOffset;
+
+    const origSetViewport = this.renderer.setViewport.bind(this.renderer);
+    const autoClear = this.renderer.autoClear;
+
+    this.renderer.setViewport = (x: any, y: any, w: any, h: any) => {
+      if (typeof x === 'number' && w === dim && h === dim) {
+        return origSetViewport(targetX, targetY, dim, dim);
+      }
+      return origSetViewport(x, y, w, h);
+    };
+
+    this.renderer.autoClear = false;
+    this.viewHelper.render(this.renderer);
+    this.renderer.autoClear = autoClear;
+
+    this.renderer.setViewport = origSetViewport;
+
+    // Explicitly restore full screen viewport for main scene
+    this.renderer.setViewport(0, 0, containerW, containerH);
+  }
+
   setTheme(theme: SceneTheme) {
     const p = THEME_PRESETS[theme];
     this.scene.background = new THREE.Color(p.bg);
@@ -125,9 +194,12 @@ export class SceneSetup {
     this.ambientLight.intensity = p.ambientIntensity;
     this.keyLight.color.set(p.keyLightColor);
     if (this.grid) {
+      const isVisible = this.grid.visible;
+      this.scene.remove(this.grid);
       (this.grid.material as THREE.Material).dispose();
       this.grid = new THREE.GridHelper(100, 50, p.gridMain, p.gridSub);
       this.grid.position.y = CONFIG.FLOOR_Y + 0.01;
+      this.grid.visible = isVisible;
       this.scene.add(this.grid);
     }
   }
@@ -164,6 +236,8 @@ export class SceneSetup {
   }
 
   dispose() {
+    this.renderer.domElement.removeEventListener('pointerdown', this.onGizmoPointerDown);
+    this.viewHelper.dispose();
     this.controls.dispose();
     if (this.renderer.domElement && this.renderer.domElement.parentElement) {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);

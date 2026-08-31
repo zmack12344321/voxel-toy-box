@@ -15,7 +15,7 @@ const DEFAULTS: SceneSettings = {
   shadows: true,
   wireframe: false,
   theme: 'light',
-  renderMode: RenderMode.MERGED_VOXEL,
+  renderMode: RenderMode.INDIVIDUAL_CUBES,
   marchingResolution: 42,
   marchingSmoothness: 0.3,
   voxelDensity: 1.0,

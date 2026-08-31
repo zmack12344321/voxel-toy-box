@@ -5,16 +5,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Box, Layers, Sparkles, Library } from 'lucide-react';
+import { Box, Layers, Sparkles } from 'lucide-react';
 import { RenderMode } from '../../types';
-import { TactileButton } from '../ui/Buttons';
-import { DropdownSliderItem } from '../ui/FloatingDropdown';
+import { TactileButton } from '../ui/buttons';
+import { DropdownSliderItem } from '../ui/dropdown';
 import { THEME_SURFACES, dropdownMenuVariants } from '../../theme/system';
-import { useSceneStore, useUIStore } from '../../store';
+import { useSceneStore } from '../../store';
 
 export const FloatingControls: React.FC = () => {
   const scene = useSceneStore();
-  const ui = useUIStore();
 
   const [isSmoothMenuOpen, setIsSmoothMenuOpen] = useState(true);
   const smoothMenuRef = useRef<HTMLDivElement>(null);
@@ -39,15 +38,6 @@ export const FloatingControls: React.FC = () => {
 
   return (
     <div className="absolute top-20 left-4 pointer-events-auto flex flex-col gap-2 z-40">
-      <div className="mb-1">
-        <TactileButton
-          onClick={() => ui.setModelLibraryOpen(true)}
-          color="indigo"
-          icon={<Library size={18} strokeWidth={2.5} />}
-          label="Library"
-        />
-      </div>
-
       <TactileButton
         onClick={() => scene.setRenderMode(RenderMode.INDIVIDUAL_CUBES)}
         color={scene.renderMode === RenderMode.INDIVIDUAL_CUBES ? 'amber' : 'slate'}
@@ -90,7 +80,7 @@ export const FloatingControls: React.FC = () => {
               <div className="flex items-center justify-between px-1 pb-2 mb-1 border-b border-purple-100">
                 <div className="flex items-center gap-1.5">
                   <Sparkles size={16} className="text-purple-600" />
-                  <span className="text-xs font-black text-purple-950 uppercase tracking-wide">Organic Surface Mesh</span>
+                  <span className="text-xs font-bold text-purple-950 uppercase tracking-wide">Organic Surface Mesh</span>
                 </div>
               </div>
 

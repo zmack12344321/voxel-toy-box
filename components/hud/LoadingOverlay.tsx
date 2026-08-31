@@ -45,7 +45,7 @@ export const LoadingOverlay: React.FC = () => {
               <Wand2 size={32} className="animate-spin" style={{ animationDuration: '3s' }} />
             </div>
             
-            <h3 className="text-lg font-black text-slate-900 mb-1">Sculpting 3D Model</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Sculpting 3D Model</h3>
             <p className="text-xs font-semibold text-indigo-600 mb-4 h-5 flex items-center justify-center">
               {LOADING_MESSAGES[loadingMsgIndex]}
             </p>

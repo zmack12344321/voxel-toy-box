@@ -31,7 +31,7 @@ export class VoxelEngine {
   private onStatsChange: (stats: MeshStats) => void;
 
   // Settings cache
-  private renderMode: RenderMode = RenderMode.MERGED_VOXEL;
+  private renderMode: RenderMode = RenderMode.INDIVIDUAL_CUBES;
   private marchingResolution = 42;
   private marchingSmoothness = 0.35;
   private wireframe = false;
@@ -324,5 +324,6 @@ export class VoxelEngine {
 
     this.sceneSetup.controls.update();
     this.sceneSetup.renderer.render(this.sceneSetup.scene, this.sceneSetup.camera);
+    this.sceneSetup.renderGizmo(delta);
   }
 }

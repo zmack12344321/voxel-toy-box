@@ -9,6 +9,7 @@ import { ModelPreset } from '../models/types';
 import { ModelRegistry } from '../models/registry';
 import { useEngineStore } from './useEngineStore';
 import { GeminiVoxelService } from '../services/GeminiVoxelService';
+import { parseVoxelJson } from '../services/VoxelUtils';
 
 interface UIStore {
   presets: ModelPreset[];
@@ -103,27 +104,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   importJson: (jsonStr: string) => {
     try {
-      const rawData = JSON.parse(jsonStr);
-      if (!Array.isArray(rawData)) throw new Error('JSON must be an array');
-
-      const voxelData: VoxelData[] = rawData.map((v: any) => {
-        let colorVal = v.c || v.color;
-        let colorInt = 0xCCCCCC;
-
-        if (typeof colorVal === 'string') {
-          if (colorVal.startsWith('#')) colorVal = colorVal.substring(1);
-          colorInt = parseInt(colorVal, 16);
-        } else if (typeof colorVal === 'number') {
-          colorInt = colorVal;
-        }
-
-        return {
-          x: Number(v.x) || 0,
-          y: Number(v.y) || 0,
-          z: Number(v.z) || 0,
-          color: isNaN(colorInt) ? 0xCCCCCC : colorInt,
-        };
-      });
+      const voxelData: VoxelData[] = parseVoxelJson(jsonStr);
 
       eng()?.loadInitialModel(voxelData);
       const customName = `Imported Build (${voxelData.length} voxels)`;
