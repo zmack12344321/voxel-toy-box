@@ -4,7 +4,7 @@
  */
 
 import { RenderMode, MeshStats } from '../../types';
-import { GreedyMeshResult } from '../VoxelMesher';
+import { GreedyMeshResult } from '../meshing/VoxelMesher';
 
 export function emitStats(
   voxelCount: number,

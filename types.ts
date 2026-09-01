@@ -79,6 +79,7 @@ export interface SceneSettings {
   marchingResolution: number;
   marchingSmoothness: number;
   voxelDensity: number;
+  voxelSpacing: number;
 }
 
 export interface SceneWater {

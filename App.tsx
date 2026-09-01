@@ -6,6 +6,7 @@
 import React, { useEffect, useRef } from 'react';
 import { VoxelEngine } from './services/VoxelEngine';
 import { UIOverlay } from './components/hud';
+import { BottomPromptBar } from './components/hud/BottomPromptBar';
 import { ModelLibraryDrawer } from './components/library';
 import { JsonModal, PromptModal } from './components/modals';
 import { ModelRegistry } from './models/registry';
@@ -52,6 +53,7 @@ const App: React.FC = () => {
     <div className="relative w-full h-screen bg-[#f0f2f5] overflow-hidden select-none">
       <div ref={containerRef} className="absolute inset-0 z-0" />
       <UIOverlay />
+      <BottomPromptBar />
       <ModelLibraryDrawer />
       <JsonModal />
       <PromptModal />

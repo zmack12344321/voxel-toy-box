@@ -4,11 +4,11 @@
  */
 
 import * as THREE from 'three';
-import { SimulationVoxel, VoxelData, RenderMode, AppState } from '../types';
-import { CONFIG } from '../utils/voxelConstants';
+import { SimulationVoxel, VoxelData, RenderMode, AppState } from '../../types';
+import { CONFIG } from '../../utils/voxelConstants';
 import { VoxelMesher, GreedyMeshResult } from './VoxelMesher';
 import { SmoothMesher } from './SmoothMesher';
-import { emitStats } from './VoxelUtils';
+import { emitStats } from '../VoxelUtils';
 
 export class MeshLifecycleManager {
   // Meshes
@@ -105,7 +105,7 @@ export class MeshLifecycleManager {
     if (this.segmentedMesh) { scene.remove(this.segmentedMesh); this.segmentedMesh.dispose(); }
     if (voxels.length === 0) return;
 
-    const geo = new THREE.BoxGeometry(0.85, 0.85, 0.85);
+    const geo = new THREE.BoxGeometry(1.0, 1.0, 1.0);
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.65, metalness: 0.12, wireframe });
     this.segmentedMesh = new THREE.InstancedMesh(geo, mat, voxels.length);
     this.segmentedMesh.castShadow = shadows;
@@ -253,10 +253,10 @@ export class MeshLifecycleManager {
     }
   }
 
-  drawSegmentedMesh(voxels: SimulationVoxel[]) {
+  drawSegmentedMesh(voxels: SimulationVoxel[], spacing = 1.0) {
     if (!this.segmentedMesh) return;
     voxels.forEach((v, i) => {
-      this.dummy.position.set(v.x, v.y, v.z);
+      this.dummy.position.set(v.x * spacing, v.y * spacing, v.z * spacing);
       this.dummy.rotation.set(0, 0, 0);
       this.dummy.updateMatrix();
       this.segmentedMesh!.setMatrixAt(i, this.dummy.matrix);
@@ -270,7 +270,12 @@ export class MeshLifecycleManager {
 
   dispose() {
     [this.dynamicPhysicsMesh, this.segmentedMesh].forEach(m => {
-      if (m) m.dispose();
+      if (m) {
+        if (m.geometry) m.geometry.dispose();
+        if (Array.isArray(m.material)) m.material.forEach(mat => mat.dispose());
+        else if (m.material) (m.material as THREE.Material).dispose();
+        m.dispose();
+      }
     });
     if (this.mergedMesh) {
       if (this.mergedMesh.geometry) this.mergedMesh.geometry.dispose();

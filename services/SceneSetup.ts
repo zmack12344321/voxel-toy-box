@@ -1,14 +1,10 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ViewHelper } from 'three/examples/jsm/helpers/ViewHelper.js';
 import { SceneTheme } from '../types';
 import { CONFIG } from '../utils/voxelConstants';
 import { THEME_PRESETS } from './presets/themePresets';
+import { ViewHelperManager } from './environment/ViewHelperManager';
+import { StudioLightingManager } from './lighting/StudioLightingManager';
 
 export { THEME_PRESETS };
 
@@ -21,13 +17,10 @@ export class SceneSetup {
   floorMat: THREE.MeshStandardMaterial;
   grid: THREE.GridHelper | null = null;
   fogInstance: THREE.Fog;
-  ambientLight: THREE.AmbientLight;
-  keyLight: THREE.DirectionalLight;
-  keyLightTarget: THREE.Object3D;
-  fillLight: THREE.DirectionalLight;
-  hemisphereLight: THREE.HemisphereLight;
-  viewHelper: ViewHelper;
-  private onGizmoPointerDown: (e: PointerEvent) => void;
+  
+  // Environment & Gizmo Managers
+  public lighting: StudioLightingManager;
+  public viewHelperManager: ViewHelperManager;
 
   constructor(container: HTMLElement) {
     container.innerHTML = '';
@@ -40,7 +33,7 @@ export class SceneSetup {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
@@ -60,34 +53,12 @@ export class SceneSetup {
     this.controls.target.set(0, 8, 0);
     this.controls.update();
 
+    // Clean neutral studio background
     this.scene.background = new THREE.Color(CONFIG.BG_COLOR);
 
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(this.ambientLight);
-
-    this.hemisphereLight = new THREE.HemisphereLight(0xddeeff, 0x0f0e0d, 0.4);
-    this.scene.add(this.hemisphereLight);
-
-    this.keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    this.keyLight.position.set(15, 50, 30);
-    this.keyLight.castShadow = true;
-    this.keyLight.shadow.mapSize.width = 2048;
-    this.keyLight.shadow.mapSize.height = 2048;
-    this.keyLight.shadow.camera.near = 1;
-    this.keyLight.shadow.camera.far = 150;
-    this.keyLight.shadow.camera.left = -60;
-    this.keyLight.shadow.camera.right = 60;
-    this.keyLight.shadow.camera.top = 60;
-    this.keyLight.shadow.camera.bottom = -60;
-    this.keyLight.shadow.bias = -0.0005;
-    this.keyLight.shadow.normalBias = 0.02;
-    this.scene.add(this.keyLight);
-    this.keyLightTarget = this.keyLight.target;
-    this.scene.add(this.keyLightTarget);
-
-    this.fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
-    this.fillLight.position.set(-20, 30, -20);
-    this.scene.add(this.fillLight);
+    // Modular 3-Point Studio Lighting
+    this.lighting = new StudioLightingManager(this.scene);
+    this.lighting.setShadows(false);
 
     this.floorMat = new THREE.MeshStandardMaterial({
       color: 0xdfe3e8,
@@ -98,47 +69,29 @@ export class SceneSetup {
     this.floor.rotation.x = -Math.PI / 2;
     this.floor.position.y = CONFIG.FLOOR_Y;
     this.floor.receiveShadow = true;
+    this.floor.visible = false;
     this.scene.add(this.floor);
 
     this.grid = new THREE.GridHelper(100, 50, 0xcfd8dc, 0xe2e8f0);
     this.grid.position.y = CONFIG.FLOOR_Y + 0.01;
+    this.grid.visible = false;
     this.scene.add(this.grid);
 
-    this.fogInstance = new THREE.Fog(CONFIG.BG_COLOR, 70, 160);
-    this.scene.fog = this.fogInstance;
+    this.fogInstance = new THREE.Fog(0xf0f2f5, 100, 250);
+    this.scene.fog = null; // Disabled by default
 
-    this.viewHelper = new ViewHelper(this.camera, this.renderer.domElement);
-    this.viewHelper.setLabels('X', 'Y', 'Z');
-
-    this.onGizmoPointerDown = (e: PointerEvent) => {
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      const dim = 128;
-      const rightOffset = 16;
-      const topOffset = 80;
-
-      const targetX = rect.width - dim - rightOffset;
-      const targetY = topOffset;
-
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
-
-      if (
-        clickX >= targetX && clickX <= targetX + dim &&
-        clickY >= targetY && clickY <= targetY + dim
-      ) {
-        const mappedX = rect.left + (rect.width - dim) + (clickX - targetX);
-        const mappedY = rect.top + (rect.height - dim) + (clickY - targetY);
-
-        const syntheticEvent = {
-          clientX: mappedX,
-          clientY: mappedY,
-        } as PointerEvent;
-
-        this.viewHelper.handleClick(syntheticEvent);
-      }
-    };
-    this.renderer.domElement.addEventListener('pointerdown', this.onGizmoPointerDown);
+    this.viewHelperManager = new ViewHelperManager(
+      this.camera,
+      this.renderer,
+      this.controls
+    );
   }
+
+  get keyLight(): THREE.DirectionalLight { return this.lighting.keyLight; }
+  get keyLightTarget(): THREE.Object3D { return this.lighting.keyLightTarget; }
+  get fillLight(): THREE.DirectionalLight { return this.lighting.fillLight; }
+  get ambientLight(): THREE.AmbientLight { return this.lighting.ambientLight; }
+  get hemisphereLight(): THREE.HemisphereLight { return this.lighting.hemisphereLight; }
 
   handleResize() {
     const w = window.innerWidth;
@@ -149,41 +102,7 @@ export class SceneSetup {
   }
 
   renderGizmo(delta: number) {
-    if (!this.viewHelper) return;
-
-    this.viewHelper.center.copy(this.controls.target);
-
-    if (this.viewHelper.animating) {
-      this.viewHelper.update(delta);
-    }
-
-    const containerW = this.renderer.domElement.clientWidth || window.innerWidth;
-    const containerH = this.renderer.domElement.clientHeight || window.innerHeight;
-    const dim = 128;
-    const rightOffset = 16;
-    const topOffset = 80;
-
-    const targetX = containerW - dim - rightOffset;
-    const targetY = containerH - dim - topOffset;
-
-    const origSetViewport = this.renderer.setViewport.bind(this.renderer);
-    const autoClear = this.renderer.autoClear;
-
-    this.renderer.setViewport = (x: any, y: any, w: any, h: any) => {
-      if (typeof x === 'number' && w === dim && h === dim) {
-        return origSetViewport(targetX, targetY, dim, dim);
-      }
-      return origSetViewport(x, y, w, h);
-    };
-
-    this.renderer.autoClear = false;
-    this.viewHelper.render(this.renderer);
-    this.renderer.autoClear = autoClear;
-
-    this.renderer.setViewport = origSetViewport;
-
-    // Explicitly restore full screen viewport for main scene
-    this.renderer.setViewport(0, 0, containerW, containerH);
+    this.viewHelperManager.render(delta);
   }
 
   setTheme(theme: SceneTheme) {
@@ -205,10 +124,7 @@ export class SceneSetup {
   }
 
   setFog(enabled: boolean) {
-    if (this.scene.fog) {
-      (this.scene.fog as THREE.Fog).near = enabled ? 70 : 999999;
-      (this.scene.fog as THREE.Fog).far = enabled ? 160 : 999999;
-    }
+    this.scene.fog = enabled ? this.fogInstance : null;
   }
 
   setGridFloor(enabled: boolean) {
@@ -221,7 +137,7 @@ export class SceneSetup {
 
   setShadows(enabled: boolean) {
     this.renderer.shadowMap.enabled = enabled;
-    this.keyLight.castShadow = enabled;
+    this.lighting.setShadows(enabled);
     this.scene.traverse((obj: THREE.Object3D) => {
       if ((obj as THREE.Mesh).isMesh) {
         (obj as THREE.Mesh).castShadow = enabled;
@@ -236,8 +152,8 @@ export class SceneSetup {
   }
 
   dispose() {
-    this.renderer.domElement.removeEventListener('pointerdown', this.onGizmoPointerDown);
-    this.viewHelper.dispose();
+    this.lighting.dispose(this.scene);
+    this.viewHelperManager.dispose();
     this.controls.dispose();
     if (this.renderer.domElement && this.renderer.domElement.parentElement) {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);

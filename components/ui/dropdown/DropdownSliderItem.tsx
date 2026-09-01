@@ -33,7 +33,7 @@ export const DropdownSliderItem: React.FC<DropdownSliderItemProps> = ({
   onChange 
 }) => {
   return (
-    <div className="w-full flex flex-col gap-2 px-3 py-2.5 rounded-xl bg-slate-50/70 border border-slate-200/60 my-1">
+    <div className="w-full flex flex-col gap-1.5 px-2 py-1.5 rounded-lg">
       <div className="flex items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <div className="shrink-0 text-indigo-600">{icon}</div>

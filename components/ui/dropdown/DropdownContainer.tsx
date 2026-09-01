@@ -23,6 +23,7 @@ export interface FloatingDropdownProps {
   big?: boolean;
   menuWidth?: string;
   customTrigger?: React.ReactNode;
+  hideChevron?: boolean;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }

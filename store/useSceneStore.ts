@@ -9,16 +9,17 @@ import { useEngineStore } from './useEngineStore';
 
 const DEFAULTS: SceneSettings = {
   autoRotate: false,
-  fog: true,
-  gridFloor: true,
-  groundPlane: true,
-  shadows: true,
+  fog: false,
+  gridFloor: false,
+  groundPlane: false,
+  shadows: false,
   wireframe: false,
   theme: 'light',
   renderMode: RenderMode.INDIVIDUAL_CUBES,
   marchingResolution: 42,
   marchingSmoothness: 0.3,
   voxelDensity: 1.0,
+  voxelSpacing: 1.0,
 };
 
 interface SceneStore extends SceneSettings {
@@ -33,6 +34,7 @@ interface SceneStore extends SceneSettings {
   setMarchingSmoothness: (v: number) => void;
   setMarchingResolution: (v: number) => void;
   setVoxelDensity: (v: number) => void;
+  setVoxelSpacing: (v: number) => void;
 }
 
 const engine = () => useEngineStore.getState().engine;
@@ -121,5 +123,12 @@ export const useSceneStore = create<SceneStore>((set) => ({
       console.log(`[SceneStore] setVoxelDensity -> ${voxelDensity}`);
       engine()?.setVoxelDensity(voxelDensity);
       return { voxelDensity };
+    }),
+
+  setVoxelSpacing: (voxelSpacing) =>
+    set(() => {
+      console.log(`[SceneStore] setVoxelSpacing -> ${voxelSpacing}`);
+      engine()?.setVoxelSpacing(voxelSpacing);
+      return { voxelSpacing };
     }),
 }));

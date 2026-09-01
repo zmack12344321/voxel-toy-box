@@ -24,7 +24,7 @@ export const BottomBar: React.FC = () => {
   };
 
   return (
-    <div className="absolute bottom-8 left-0 w-full flex justify-center items-end pointer-events-none z-30">
+    <div className="fixed bottom-6 right-6 flex items-center justify-end pointer-events-none z-40">
       <div className="pointer-events-auto transition-all duration-500 ease-in-out transform">
         
         {/* STATE 1: STABLE -> DISMANTLE */}

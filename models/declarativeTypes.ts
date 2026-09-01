@@ -16,6 +16,7 @@ export type DeclarativeShapeCommand =
       hollow?: boolean;
       wallThickness?: number;
       mirror?: MirrorAxis;
+      rotation?: [number, number, number];
     }
   | {
       op: 'cylinder';
@@ -26,6 +27,7 @@ export type DeclarativeShapeCommand =
       color: string;
       hollow?: boolean;
       mirror?: MirrorAxis;
+      rotation?: [number, number, number];
     }
   | {
       op: 'sphere' | 'ellipsoid';
@@ -35,6 +37,7 @@ export type DeclarativeShapeCommand =
       color: string;
       hollow?: boolean;
       mirror?: MirrorAxis;
+      rotation?: [number, number, number];
     }
   | {
       op: 'cone' | 'pyramid';
@@ -44,6 +47,7 @@ export type DeclarativeShapeCommand =
       height: number;
       color: string;
       mirror?: MirrorAxis;
+      rotation?: [number, number, number];
     }
   | {
       op: 'wedge' | 'ramp';
@@ -52,6 +56,7 @@ export type DeclarativeShapeCommand =
       direction?: '+x' | '-x' | '+z' | '-z' | '+y' | '-y';
       color: string;
       mirror?: MirrorAxis;
+      rotation?: [number, number, number];
     }
   | {
       op: 'capsule' | 'limb';
@@ -182,6 +187,13 @@ export type DeclarativeShapeCommand =
       color: string;
       mirror?: MirrorAxis;
     }
+  | {
+      op: 'spline_pipe' | 'curve';
+      points: Array<[number, number, number]>;
+      thickness?: number;
+      color: string;
+      mirror?: MirrorAxis;
+    }
   // CSG Difference / Carving
   | {
       op: 'carve_box';
@@ -203,7 +215,6 @@ export type DeclarativeShapeCommand =
       axis?: 'x' | 'y' | 'z';
       mirror?: MirrorAxis;
     }
-  // Repetition Modifiers
   // Biome Surface & Water (metadata + expansion)
   | {
       op: 'water' | 'water_surface';
@@ -248,9 +259,17 @@ export type DeclarativeShapeCommand =
       }>;
     };
 
+export type PaletteEntry = string | {
+  color: string;
+  roughness?: number;
+  metalness?: number;
+  emissive?: boolean | string;
+};
+
 export interface DeclarativeModelPayload {
   name?: string;
   description?: string;
-  palette?: Record<string, string>;
+  palette?: Record<string, PaletteEntry>;
   commands: DeclarativeShapeCommand[];
 }
+

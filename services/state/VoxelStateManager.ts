@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { SimulationVoxel, VoxelData } from '../types';
-import { RebuildTarget } from '../types';
+import { SimulationVoxel, VoxelData, RebuildTarget } from '../../types';
 
 export class VoxelStateManager {
   voxels: SimulationVoxel[] = [];

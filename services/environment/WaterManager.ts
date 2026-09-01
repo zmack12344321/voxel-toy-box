@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { Water } from 'three/examples/jsm/objects/Water.js';
-import { SceneWater } from '../types';
+import { SceneWater } from '../../types';
 
 export class WaterManager {
   waterMesh: Water | null = null;

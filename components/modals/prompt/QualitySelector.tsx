@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Layers } from 'lucide-react';
+import { Layers, Sparkles } from 'lucide-react';
 
 export type DetailLevel = 'masterpiece' | 'detailed' | 'classic';
 

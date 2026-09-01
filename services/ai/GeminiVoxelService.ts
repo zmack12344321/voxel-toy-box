@@ -4,11 +4,12 @@
 */
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { VoxelData, SceneWater } from "../types";
-import { compileDetailedPayload } from "../models/builder";
-import { compileDeclarativePayload } from "./rasterizer/index";
-import { DeclarativeModelPayload } from "../models/declarativeTypes";
-import { DetailedVoxelModelPayload } from "../models/types";
+import { VoxelData, SceneWater } from "../../types";
+import { compileDetailedPayload } from "../../models/builder";
+import { compileDeclarativePayload } from "../rasterizer/index";
+import { DeclarativeModelPayload } from "../../models/declarativeTypes";
+import { DetailedVoxelModelPayload } from "../../models/types";
+import { CatalogRetriever } from "./CatalogRetriever";
 
 export interface GenerationOptions {
   prompt: string;
@@ -45,6 +46,10 @@ PHYSICAL MORPH CONTEXT: Rebuilding from existing materials. Harmonize with exist
 `;
     }
 
+    // Retrieve relevant catalog recipes for few-shot prompt injection
+    const relevantRecipes = CatalogRetriever.findRelevantRecipes(prompt, 3);
+    const fewShotExamples = CatalogRetriever.formatRecipesForPrompt(relevantRecipes);
+
     const instructions = `
 You are an expert 3D generative architect.
 ${paletteHint}
@@ -54,7 +59,8 @@ TASK: Generate a high-detail, visually stunning 3D model of: "${prompt}".
 DECLARATIVE DSL VOCABULARY & RULES:
 1. DESIGN & STRUCTURE:
    - Use high-level commands for maximum detail at low token cost:
-      * Primitives: 'box' (size, hollow, wallThickness), 'cylinder' (radius, height, axis), 'sphere'/'ellipsoid' (radii/radius), 'cone'/'pyramid' (baseRadius, height), 'wedge'/'ramp' (size, direction: "+z"|"-z"|"+x"|"-x"), 'capsule'/'limb' (from, to, radiusStart, radiusEnd)
+      * Primitives: 'box' (size, hollow, wallThickness, rotation: [rx,ry,rz] in degrees), 'cylinder' (radius, height, axis, rotation), 'sphere'/'ellipsoid' (radii/radius, rotation), 'cone'/'pyramid' (baseRadius, height, rotation), 'wedge'/'ramp' (size, direction: "+z"|"-z"|"+x"|"-x", rotation), 'capsule'/'limb' (from, to, radiusStart, radiusEnd)
+      * Curved Spline Pipes: 'spline_pipe' (points: [[x,y,z], ...], thickness, color) — smooth 3D curves for vines, tentacles, cables, rivers, curved pipes
       * Compound Helpers: 'dome' (radius, axis: "+y"|"-y"), 'arch' (width, height, depth, style: "roman"|"square"), 'ring'/'wheel' (radius, thickness, axis, spokes), 'poly_prism' (radius, height, sides: 3|5|6|8), 'wing' (from, span: [sx,sy,sz], rootChord, tipChord, thickness), 'stairs'/'spiral_stairs' (radius, totalHeight, steps), 'tree' (trunkHeight, canopyRadius, foliageStyle: "sphere"|"pine"|"cloud"|"palm"|"willow"), 'fence' (from, to, height), 'trim'/'bevel_edges' (at, size, thickness), 'terrain' (at, size: [w, maxH, d], roughness)
       * Biome Surfaces: 'desert' (at, size, roughness: 0.3, color: sand, underColor: tan, accentColor: gold — sand dunes + ripples), 'snow' (at, size, roughness: 0.15, color: white, underColor: pale blue, accentColor: bright white — drifts + ice), 'forest_floor' (at, size, roughness: 0.25, color: green, underColor: brown, accentColor: dark green — terrain + scattered trees). Each produces a full terrain + terrain features automatically.
       * Water Surface: 'water' (at: [x, y, z], size: [width, depth], color: "#hex", opacity: 0.88). Metadata only — no voxels; the engine renders a real Three.js water plane at the given y level. Use for lakes, rivers, oceans. Place at y=0 for ground-level water or y>0 for elevated pools.
@@ -63,19 +69,25 @@ DECLARATIVE DSL VOCABULARY & RULES:
    - Repetition Loops: 'repeat' (count, step: [dx,dy,dz], command) and 'radialRepeat' (count, radius, axis: "y"|"z", command).
    - Micro Accents: 'accents' (list of { at: [x,y,z], color: "key", mirror: "x" } for pinpoint eyes, glow runes, headlights, buttons, rivets).
 
-2. SPATIAL ALIGNMENT:
-   - Center horizontally around x=0, z=0.
-   - Ground level begins at y=0.
+2. SPATIAL ALIGNMENT & ROTATION:
+   - Center horizontally around x=0, z=0. Ground level begins at y=0.
+   - Use 'rotation': [rx, ry, rz] to tilt, angle, or orient shapes in 3D space.
 
 3. PALETTE:
    - Define named color keys in 'palette' (e.g. "primary", "secondary", "trim", "glow", "dark", "wood", "foliage").
+   - Can use hex strings or objects with PBR attributes: { "glow": { "color": "#ff007f", "emissive": true }, "metal": { "color": "#888899", "metalness": 0.8, "roughness": 0.2 } }.
+
+4. CONTEXTUAL CATALOG FEW-SHOT EXAMPLES:
+Use the structural patterns and alignment conventions demonstrated in these matched reference recipes:
+${fewShotExamples}
 
 OUTPUT JSON SCHEMA:
 {
   "name": "Concise 2-4 word title",
-  "palette": { "primary": "#hex", "secondary": "#hex", "trim": "#hex", "glow": "#hex", "accent": "#hex" },
+  "palette": { "primary": "#hex", "secondary": "#hex", "trim": "#hex", "glow": { "color": "#hex", "emissive": true } },
   "commands": [
-    { "op": "box", "at": [0, 5, 0], "size": [10, 10, 10], "color": "primary" },
+    { "op": "box", "at": [0, 5, 0], "size": [10, 10, 10], "color": "primary", "rotation": [0, 45, 0] },
+    { "op": "spline_pipe", "points": [[0,0,0], [5,4,2], [10,2,8]], "thickness": 2, "color": "secondary" },
     { "op": "capsule", "from": [5, 5, 0], "to": [12, 8, 0], "radiusStart": 2, "radiusEnd": 1, "color": "secondary", "mirror": "x" },
     { "op": "wing", "from": [5, 5, 0], "span": [10, 0, -4], "rootChord": 6, "tipChord": 2, "color": "primary", "mirror": "x" },
     { "op": "wedge", "at": [0, 11, 2], "size": [8, 3, 6], "direction": "+z", "color": "trim" },

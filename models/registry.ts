@@ -12,9 +12,11 @@ import { CastlePreset } from './presets/castle';
 import { RobotPreset } from './presets/robot';
 import { SpaceshipPreset } from './presets/spaceship';
 import { VoxelData } from '../types';
+import { CATALOG_RECIPES } from './catalog/recipes';
+import { compileDeclarativePayload } from '../services/rasterizer/index';
 
-export class ModelRegistry {
-  private static presets: Map<string, ModelPreset> = new Map([
+function initializePresetMap(): Map<string, ModelPreset> {
+  const map = new Map<string, ModelPreset>([
     [EaglePreset.id, EaglePreset],
     [CatPreset.id, CatPreset],
     [RabbitPreset.id, RabbitPreset],
@@ -23,6 +25,33 @@ export class ModelRegistry {
     [SpaceshipPreset.id, SpaceshipPreset],
     [TwinsPreset.id, TwinsPreset],
   ]);
+
+  CATALOG_RECIPES.forEach(recipe => {
+    let cat: ModelCategory = 'objects';
+    if (recipe.category === 'architecture') cat = 'architecture';
+    else if (recipe.category === 'creatures') cat = 'creatures';
+    else if (recipe.category === 'scifi_mech' || recipe.category === 'vehicles') cat = 'scifi_mech';
+
+    const colors = Object.values(recipe.palette).map(p => typeof p === 'string' ? p : p.color).slice(0, 5);
+
+    const preset: ModelPreset = {
+      id: `cat_${recipe.id}`,
+      name: recipe.name,
+      category: cat,
+      description: recipe.description,
+      tags: recipe.tags,
+      iconName: cat === 'architecture' ? 'Castle' : (cat === 'creatures' ? 'Bird' : 'Sparkles'),
+      palettePreview: colors,
+      generate: () => compileDeclarativePayload(recipe).voxels
+    };
+    map.set(preset.id, preset);
+  });
+
+  return map;
+}
+
+export class ModelRegistry {
+  private static presets: Map<string, ModelPreset> = initializePresetMap();
 
   /**
    * Returns all available preset models.

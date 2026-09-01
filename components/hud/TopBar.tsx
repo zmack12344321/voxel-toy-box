@@ -17,6 +17,7 @@ import {
 } from '../ui/dropdown';
 import { TactileButton } from '../ui/buttons';
 import { ModelStatusBadge } from './ModelStatusBadge';
+import { FloatingControls } from './FloatingControls';
 import { GuideModal } from '../modals/guide/GuideModal';
 import { useEngineStore, useSceneStore, useUIStore } from '../../store';
 
@@ -37,22 +38,28 @@ export const TopBar: React.FC = () => {
 
   return (
     <>
-      <header className="fixed top-4 left-4 right-4 z-40 flex items-center justify-between pointer-events-none font-sans">
-        {/* Left Side: Model Library and Status Badge */}
-        <div className="pointer-events-auto flex items-center gap-2">
-          <TactileButton
-            onClick={() => ui.setModelLibraryOpen(true)}
-            color="indigo"
-            icon={<Library size={18} strokeWidth={2.5} />}
-            label="Model Library"
-          />
+      <header className="fixed top-4 left-4 right-4 z-40 flex items-start justify-between pointer-events-none font-sans">
+        {/* Left Side: Header Row (Model Library + Status Badge) with Render Modes stacked below */}
+        <div className="pointer-events-auto flex flex-col items-start gap-2">
+          {/* Header Row: Model Library Button + Model Status Badge */}
+          <div className="flex items-center gap-3">
+            <TactileButton
+              onClick={() => ui.setModelLibraryOpen(true)}
+              color="indigo"
+              icon={<Library size={18} strokeWidth={2.5} />}
+              label="Model Library"
+            />
 
-          <ModelStatusBadge
-            baseModel={ui.currentBaseModel}
-            voxelCount={voxelCount}
-            meshStats={meshStats}
-            renderMode={scene.renderMode}
-          />
+            <ModelStatusBadge
+              baseModel={ui.currentBaseModel}
+              voxelCount={voxelCount}
+              meshStats={meshStats}
+              renderMode={scene.renderMode}
+            />
+          </div>
+
+          {/* Stacked Below Model Library: Render Mode Buttons */}
+          <FloatingControls />
         </div>
 
         {/* Right Side: Icon-Only Play Button, Guide Button, Scene Options, Reset View, Export JSON */}
@@ -116,15 +123,6 @@ export const TopBar: React.FC = () => {
               checked={scene.wireframe}
               onChange={scene.toggleWireframe}
             />
-
-            <DropdownDivider />
-
-            <DropdownSubHeading label="SCENE BACKDROP" />
-            
-            <DropdownItem onClick={() => scene.setTheme('light')} icon={<Sun size={16} />} label="Clean Light" colorSwatch="#f0f2f5" active={scene.theme === 'light'} />
-            <DropdownItem onClick={() => scene.setTheme('studio')} icon={<Box size={16} />} label="Pure Studio" colorSwatch="#ffffff" active={scene.theme === 'studio'} />
-            <DropdownItem onClick={() => scene.setTheme('dark')} icon={<CloudFog size={16} />} label="Midnight Dark" colorSwatch="#0f172a" active={scene.theme === 'dark'} />
-            <DropdownItem onClick={() => scene.setTheme('dusk')} icon={<Sparkles size={16} />} label="Twilight Dusk" colorSwatch="#1e1b4b" active={scene.theme === 'dusk'} />
           </FloatingDropdown>
 
           <TactileButton

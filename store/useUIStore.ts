@@ -8,7 +8,7 @@ import { SavedModel, VoxelData } from '../types';
 import { ModelPreset } from '../models/types';
 import { ModelRegistry } from '../models/registry';
 import { useEngineStore } from './useEngineStore';
-import { GeminiVoxelService } from '../services/GeminiVoxelService';
+import { GeminiVoxelService } from '../services/ai/GeminiVoxelService';
 import { parseVoxelJson } from '../services/VoxelUtils';
 
 interface UIStore {

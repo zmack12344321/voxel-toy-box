@@ -16,6 +16,7 @@ export interface ModelPreset {
   tags: string[];
   iconName: 'Bird' | 'Cat' | 'Rabbit' | 'Users' | 'Castle' | 'Bot' | 'Rocket' | 'Sparkles' | 'TreePine' | 'Shield';
   palettePreview: string[];
+  voxelCount?: number;
   generate: () => VoxelData[];
 }
 

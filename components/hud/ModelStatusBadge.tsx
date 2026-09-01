@@ -5,14 +5,14 @@
 
 import React from 'react';
 import { THEME_SURFACES } from '../../theme/system';
-import { RenderMode } from '../../types';
+import { RenderMode, MeshStats } from '../../types';
 import { Text } from '../ui/typography/Typography';
 import { Badge } from '../ui/badge/Badge';
 
 interface ModelStatusBadgeProps {
   baseModel: string;
   voxelCount: number;
-  meshStats?: { totalTriangles: number } | null;
+  meshStats?: MeshStats | { totalTriangles?: number; triangleCount?: number } | null;
   renderMode?: RenderMode;
 }
 
@@ -33,17 +33,21 @@ export const ModelStatusBadge: React.FC<ModelStatusBadgeProps> = ({
         {(voxelCount ?? 0).toLocaleString()} voxels
       </Badge>
 
-      {meshStats && typeof meshStats.totalTriangles === 'number' && (
-        <Badge
-          variant={
-            renderMode === RenderMode.MERGED_VOXEL ? 'emerald' :
-            renderMode === RenderMode.SMOOTH_MARCHING ? 'sky' : 'amber'
-          }
-          className="font-medium"
-        >
-          {meshStats.totalTriangles.toLocaleString()} tris
-        </Badge>
-      )}
+      {(() => {
+        const triCount = meshStats ? ('totalTriangles' in meshStats && typeof meshStats.totalTriangles === 'number' ? meshStats.totalTriangles : ('triangleCount' in meshStats && typeof meshStats.triangleCount === 'number' ? meshStats.triangleCount : undefined)) : undefined;
+        if (triCount === undefined) return null;
+        return (
+          <Badge
+            variant={
+              renderMode === RenderMode.MERGED_VOXEL ? 'emerald' :
+              renderMode === RenderMode.SMOOTH_MARCHING ? 'sky' : 'amber'
+            }
+            className="font-medium"
+          >
+            {triCount.toLocaleString()} tris
+          </Badge>
+        );
+      })()}
     </div>
   );
 };

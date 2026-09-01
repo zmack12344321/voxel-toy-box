@@ -18,7 +18,6 @@ export const UIOverlay: React.FC = () => {
   return (
     <div className="absolute top-0 left-0 w-full h-full pointer-events-none select-none">
       <TopBar />
-      <FloatingControls />
       <BottomBar />
       <LoadingOverlay />
       <GuideModal

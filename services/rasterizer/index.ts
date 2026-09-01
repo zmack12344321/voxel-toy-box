@@ -8,7 +8,7 @@
 
 import { VoxelData, SceneWater } from '../../types';
 import { parseColor } from '../../models/builder';
-import { DeclarativeModelPayload, DeclarativeShapeCommand } from '../../models/declarativeTypes';
+import { DeclarativeModelPayload, DeclarativeShapeCommand, PaletteEntry } from '../../models/declarativeTypes';
 import { RasterizerState, resolveColor } from './helpers';
 import { executeCommand as dispatchCommand } from './dispatcher';
 
@@ -16,11 +16,12 @@ export class DeclarativeRasterizer {
   private state: RasterizerState;
   public water: { level: number; extent: [number, number]; color: number; opacity: number } | null = null;
 
-  constructor(palette?: Record<string, string>) {
+  constructor(palette?: Record<string, PaletteEntry>) {
     const paletteMap = new Map<string, number>();
     if (palette) {
       Object.entries(palette).forEach(([k, v]) => {
-        paletteMap.set(k.toLowerCase(), parseColor(v));
+        const colorVal = typeof v === 'string' ? v : v.color;
+        paletteMap.set(k.toLowerCase(), parseColor(colorVal));
       });
     }
     this.state = { map: new Map(), palette: paletteMap };

@@ -5,7 +5,7 @@
 
 import * as THREE from 'three';
 import { ModelRegistry } from '../../models/registry';
-import { VoxelMesher } from '../VoxelMesher';
+import { VoxelMesher } from '../meshing/VoxelMesher';
 import { VoxelData } from '../../types';
 
 export interface ThumbnailRenderOptions {
@@ -55,7 +55,7 @@ export function renderVoxelThumbnailDataUrl(
   scene.add(fillLight);
 
   // Generate Voxel Mesh
-  const meshResult = VoxelMesher.buildMergedMesh(voxels);
+  const meshResult = VoxelMesher.buildCulledGeometry(voxels);
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.35,

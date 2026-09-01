@@ -4,8 +4,8 @@
  */
 
 import * as THREE from 'three';
-import { SimulationVoxel, VoxelData, RebuildTarget } from '../types';
-import { CONFIG } from '../utils/voxelConstants';
+import { SimulationVoxel, VoxelData, RebuildTarget } from '../../types';
+import { CONFIG } from '../../utils/voxelConstants';
 
 export class VoxelPhysics {
   rebuildStartTime = 0;

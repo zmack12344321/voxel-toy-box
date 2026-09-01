@@ -7,12 +7,16 @@ import * as THREE from 'three';
 import { AppState, VoxelData, MeshStats, SceneTheme, RenderMode, SceneWater } from '../types';
 import { CONFIG } from '../utils/voxelConstants';
 import { SceneSetup } from './SceneSetup';
-import { VoxelStateManager } from './VoxelStateManager';
-import { MeshLifecycleManager } from './MeshLifecycleManager';
-import { VoxelPhysics } from './VoxelPhysics';
-import { WaterManager } from './WaterManager';
+import { VoxelStateManager } from './state/VoxelStateManager';
+import { MeshLifecycleManager } from './meshing/MeshLifecycleManager';
+import { VoxelPhysics } from './physics/VoxelPhysics';
+import { WaterManager } from './environment/WaterManager';
 import { InputHandler } from './InputHandler';
+import { SplineAnimationManager } from './camera/SplineAnimationManager';
 import { getJsonData, getUniqueColors } from './VoxelUtils';
+
+import { CameraController } from './camera/CameraController';
+import { EngineRebuildController } from './state/EngineRebuildController';
 
 export class VoxelEngine {
   private state = AppState.STABLE;
@@ -24,6 +28,9 @@ export class VoxelEngine {
   private physics: VoxelPhysics;
   private waterManager: WaterManager;
   private inputHandler: InputHandler;
+  private rebuildController: EngineRebuildController;
+  public cameraController: CameraController;
+  public splineAnimManager: SplineAnimationManager;
 
   // Callbacks
   private onStateChange: (state: AppState) => void;
@@ -35,7 +42,8 @@ export class VoxelEngine {
   private marchingResolution = 42;
   private marchingSmoothness = 0.35;
   private wireframe = false;
-  private shadows = true;
+  private shadows = false;
+  private voxelSpacing = 1.0;
   private pendingRebuildTarget: VoxelData[] | null = null;
   private pendingRebuildWater: SceneWater | null | undefined = undefined;
 
@@ -58,6 +66,9 @@ export class VoxelEngine {
     this.meshLifecycle = new MeshLifecycleManager();
     this.physics = new VoxelPhysics();
     this.waterManager = new WaterManager();
+    this.rebuildController = new EngineRebuildController();
+    this.cameraController = new CameraController(this.sceneSetup.camera, this.sceneSetup.controls);
+    this.splineAnimManager = new SplineAnimationManager();
     this.inputHandler = new InputHandler(
       this.sceneSetup.renderer.domElement,
       this.sceneSetup.camera,
@@ -99,99 +110,29 @@ export class VoxelEngine {
       AppState.STABLE,
     );
     this.stateManager.voxels = voxels;
+    this.meshLifecycle.drawSegmentedMesh(this.stateManager.voxels, this.voxelSpacing);
     this.onCountChange(this.stateManager.voxels.length);
     this.state = AppState.STABLE;
     this.onStateChange(this.state);
-    this.autofocusCamera();
+    this.cameraController.autofocus(this.stateManager.voxels);
     if (water !== undefined) this.waterManager.setup(this.sceneSetup.scene, water, this.sceneSetup.scene.fog !== null);
   }
 
-  private autofocusCamera() {
-    const voxels = this.stateManager.voxels;
-    if (voxels.length === 0) return;
-
-    let minY = Infinity, maxY = -Infinity;
-    let maxRadiusSq = 0;
-
-    voxels.forEach(v => {
-      minY = Math.min(minY, v.y);
-      maxY = Math.max(maxY, v.y);
-      const rSq = v.x * v.x + v.z * v.z;
-      maxRadiusSq = Math.max(maxRadiusSq, rSq);
-    });
-
-    const midY = (minY + maxY) / 2;
-    const radius = Math.sqrt(maxRadiusSq);
-    const height = maxY - minY;
-
-    this.sceneSetup.controls.target.set(0, Math.max(2, midY), 0);
-    const distance = Math.max(40, Math.max(radius * 2.2, height * 1.8) + 15);
-    const angle = Math.PI / 5;
-    this.sceneSetup.camera.position.set(
-      Math.sin(angle) * distance * 0.8,
-      midY + distance * 0.45,
-      Math.cos(angle) * distance * 0.8
-    );
-    this.sceneSetup.controls.update();
-  }
-
   public rebuild(targetModel: VoxelData[], water?: SceneWater | null) {
-    console.log(`[VoxelEngine] Rebuilding into new shape (${targetModel.length} target voxels)`);
-    if (this.state !== AppState.STABLE) {
-      this.dismantle();
-    }
-    this.state = AppState.REBUILDING;
-    this.onStateChange(this.state);
-
-    // Store target data for when rebuild completes
-    this.pendingRebuildTarget = targetModel;
-    this.pendingRebuildWater = water;
-
-    const { voxels, targets } = this.physics.initRebuild(
-      this.stateManager.voxels, targetModel, CONFIG
+    this.state = this.rebuildController.rebuild(
+      this.sceneSetup, this.stateManager, this.meshLifecycle, this.physics,
+      targetModel, water, this.wireframe, this.shadows, this.renderMode,
+      this.onStateChange, this.onCountChange, this.onStatsChange,
+      this.dismantle.bind(this), this.state
     );
-    this.stateManager.voxels = voxels;
-    this.stateManager.rebuildTargets = targets;
-    this.physics.rebuildStartTime = performance.now();
-    
-    // Ensure InstancedMesh capacity buffer is allocated to render all target voxels
-    this.meshLifecycle.ensureDynamicPhysicsCapacity(
-      this.sceneSetup.scene, voxels.length, this.wireframe, this.shadows
-    );
-    this.meshLifecycle.drawDynamicPhysics(this.stateManager.voxels);
-    this.meshLifecycle.updateVisibility(this.stateManager.voxels.length, this.renderMode, this.state, this.onStatsChange);
-
-    this.onCountChange(this.stateManager.voxels.length);
   }
 
   private completeRebuild() {
-    const targetModel = this.pendingRebuildTarget;
-    const water = this.pendingRebuildWater;
-    if (!targetModel) return;
-    this.pendingRebuildTarget = null;
-    this.pendingRebuildWater = null;
-
-    console.log('[VoxelEngine] Rebuild animation complete. Finalizing meshes.');
-    // Now that morph animation is done, replace meshes with final target state
-    this.meshLifecycle.clearAll(this.sceneSetup.scene);
-    const newVoxels = this.meshLifecycle.createAllMeshes(
-      this.sceneSetup.scene, targetModel,
-      {
-        marchingRes: this.marchingResolution,
-        marchingSmooth: this.marchingSmoothness,
-        wireframe: this.wireframe,
-        shadows: this.shadows,
-      },
-      this.onStatsChange,
-      this.renderMode,
-      AppState.STABLE,
+    this.rebuildController.completeRebuild(
+      this.sceneSetup, this.stateManager, this.meshLifecycle, this.waterManager,
+      this.marchingResolution, this.marchingSmoothness, this.wireframe, this.shadows,
+      this.renderMode, this.voxelSpacing, this.onStatsChange
     );
-    this.stateManager.voxels = newVoxels;
-    this.stateManager.currentRawVoxelData = [...targetModel];
-
-    if (water !== undefined) {
-      this.waterManager.setup(this.sceneSetup.scene, water, this.sceneSetup.scene.fog !== null);
-    }
   }
 
   public dismantle(hitPoint?: THREE.Vector3) {
@@ -258,36 +199,21 @@ export class VoxelEngine {
     this.stateManager.setVoxelDensity(density, this.onCountChange);
   }
 
-  // ── Delegate settings to SceneSetup ──
+  // ── Delegate settings to SceneSetup & CameraController ──
 
   public setFog(enabled: boolean) { console.log(`[VoxelEngine] Fog set to ${enabled}`); this.sceneSetup.setFog(enabled); }
   public setGridFloor(enabled: boolean) { console.log(`[VoxelEngine] Grid floor set to ${enabled}`); this.sceneSetup.setGridFloor(enabled); }
   public setGroundPlane(enabled: boolean) { console.log(`[VoxelEngine] Ground plane set to ${enabled}`); this.sceneSetup.setGroundPlane(enabled); }
   public setShadows(enabled: boolean) { console.log(`[VoxelEngine] Shadows set to ${enabled}`); this.shadows = enabled; this.sceneSetup.setShadows(enabled); }
   public setWireframe(enabled: boolean) { console.log(`[VoxelEngine] Wireframe set to ${enabled}`); this.wireframe = enabled; this.meshLifecycle.setWireframe(enabled); }
-  public setAutoRotate(enabled: boolean) { console.log(`[VoxelEngine] Auto-rotate set to ${enabled}`); this.sceneSetup.setAutoRotate(enabled); }
-
-  public setCameraDistance(distance: number) {
-    this.sceneSetup.camera.position.setLength(distance);
-  }
-
-  public setCameraAngle(phi: number, theta: number) {
-    const r = this.sceneSetup.camera.position.length();
-    this.sceneSetup.camera.position.set(
-      r * Math.sin(theta) * Math.cos(phi),
-      r * Math.sin(theta) * Math.sin(phi),
-      r * Math.cos(theta)
-    );
-  }
-
-  public resetCamera() {
-    console.log('[VoxelEngine] Resetting camera view.');
-    this.sceneSetup.camera.position.set(32, 28, 55);
-    this.sceneSetup.controls.target.set(0, 8, 0);
-    this.sceneSetup.controls.update();
-  }
-
+  public setAutoRotate(enabled: boolean) { console.log(`[VoxelEngine] Auto-rotate set to ${enabled}`); this.cameraController.setAutoRotate(enabled); }
+  public resetCamera() { this.cameraController.reset(); }
   public setTheme(theme: SceneTheme) { console.log(`[VoxelEngine] Theme set to ${theme}`); this.sceneSetup.setTheme(theme); }
+  public setVoxelSpacing(spacing: number) {
+    this.voxelSpacing = Math.max(1.0, Math.min(3.0, spacing));
+    console.log(`[VoxelEngine] Voxel Spacing set to ${this.voxelSpacing}`);
+    this.meshLifecycle.drawSegmentedMesh(this.stateManager.voxels, this.voxelSpacing);
+  }
 
   public getJsonData(): string { return getJsonData(this.stateManager.voxels); }
   public getUniqueColors(): string[] { return getUniqueColors(this.stateManager.voxels); }
@@ -300,6 +226,7 @@ export class VoxelEngine {
     const delta = this.clock.getDelta();
 
     this.waterManager.update(delta);
+    this.splineAnimManager.update(delta, this.sceneSetup.scene);
 
     if (this.state === AppState.DISMANTLING) {
       const allSettled = this.physics.updateDismantle(this.stateManager.voxels, CONFIG);

@@ -1,40 +1,15 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ */
 
 import { VoxelData } from '../types';
 import { BoxVolume, DetailedVoxelModelPayload } from './types';
+import { parseColor } from './builder/colorUtils';
+import { cullInternalVoxels, applyLightingShading } from './builder/shadingPasses';
 
-/**
- * Parses color string (e.g. '#FF5500', '0xFF5500', or number) into a numeric hex value.
- */
-export function parseColor(color: string | number): number {
-  if (typeof color === 'number') return color;
-  if (typeof color === 'string') {
-    let clean = color.trim();
-    if (clean.startsWith('#')) clean = clean.substring(1);
-    else if (clean.startsWith('0x') || clean.startsWith('0X')) clean = clean.substring(2);
-    const parsed = parseInt(clean, 16);
-    return isNaN(parsed) ? 0xcccccc : parsed;
-  }
-  return 0xcccccc;
-}
+export { parseColor, adjustBrightness } from './builder/colorUtils';
 
-/**
- * Adjusts the brightness of a hex color by a factor (-1.0 to 1.0).
- */
-export function adjustBrightness(hex: number, factor: number): number {
-  const r = Math.min(255, Math.max(0, Math.round(((hex >> 16) & 0xff) * (1 + factor))));
-  const g = Math.min(255, Math.max(0, Math.round(((hex >> 8) & 0xff) * (1 + factor))));
-  const b = Math.min(255, Math.max(0, Math.round((hex & 0xff) * (1 + factor))));
-  return (r << 16) | (g << 8) | b;
-}
-
-/**
- * VoxelBuilder provides procedural 3D drawing tools, symmetry mirrors,
- * volume rasterization, and post-shading passes.
- */
 export class VoxelBuilder {
   private map = new Map<string, VoxelData>();
 
@@ -163,83 +138,13 @@ export class VoxelBuilder {
     return this;
   }
 
-  /**
-   * Removes all interior voxels that are completely occluded by 6 solid neighbors.
-   * Reduces rendered voxel count by 40-70% with ZERO visual difference.
-   */
   public cullInternalVoxels(): this {
-    const coords = new Set<string>(this.map.keys());
-    const culledMap = new Map<string, VoxelData>();
-
-    this.map.forEach((voxel, key) => {
-      const { x, y, z } = voxel;
-
-      // Check all 6 cardinal directions (Von Neumann neighborhood)
-      const hasTop    = coords.has(`${x},${y + 1},${z}`);
-      const hasBottom = coords.has(`${x},${y - 1},${z}`);
-      const hasNorth  = coords.has(`${x},${y},${z + 1}`);
-      const hasSouth  = coords.has(`${x},${y},${z - 1}`);
-      const hasEast   = coords.has(`${x + 1},${y},${z}`);
-      const hasWest   = coords.has(`${x - 1},${y},${z}`);
-
-      const isCompletelyOccluded = 
-        hasTop && hasBottom && 
-        hasNorth && hasSouth && 
-        hasEast && hasWest;
-
-      if (!isCompletelyOccluded) {
-        culledMap.set(key, voxel);
-      }
-    });
-
-    this.map = culledMap;
+    this.map = cullInternalVoxels(this.map);
     return this;
   }
 
-  /**
-   * Applies an ambient occlusion and directional top-light pass to enhance 3D depth.
-   */
   public applyLightingShading(): this {
-    const coords = new Set<string>(this.map.keys());
-    const newMap = new Map<string, VoxelData>();
-
-    this.map.forEach((voxel, key) => {
-      const { x, y, z, color } = voxel;
-      
-      // Check top neighbor (is this an exposed top face?)
-      const hasTop = coords.has(`${x},${y + 1},${z}`);
-      // Check bottom neighbor
-      const hasBottom = coords.has(`${x},${y - 1},${z}`);
-      // Check count of direct neighbors (ambient density)
-      let neighbors = 0;
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dz = -1; dz <= 1; dz++) {
-            if (dx === 0 && dy === 0 && dz === 0) continue;
-            if (coords.has(`${x + dx},${y + dy},${z + dz}`)) neighbors++;
-          }
-        }
-      }
-
-      let brightness = 0;
-      if (!hasTop) {
-        // Highlight upward facing surfaces
-        brightness += 0.08;
-      }
-      if (!hasBottom && y <= 2) {
-        // Darken near ground
-        brightness -= 0.12;
-      }
-      // Occlusion in deep crevices
-      if (neighbors > 20) {
-        brightness -= 0.15;
-      }
-
-      const shadedColor = brightness !== 0 ? adjustBrightness(color, brightness) : color;
-      newMap.set(key, { x, y, z, color: shadedColor });
-    });
-
-    this.map = newMap;
+    this.map = applyLightingShading(this.map);
     return this;
   }
 
@@ -248,78 +153,14 @@ export class VoxelBuilder {
   }
 }
 
-/**
- * Converts a detailed payload (composite boxes + fine voxels) into a flattened VoxelData array.
- */
-export function compileDetailedPayload(payload: DetailedVoxelModelPayload | VoxelData[]): VoxelData[] {
-  if (Array.isArray(payload)) {
-    return payload.map(v => ({
-      x: Number(v.x) || 0,
-      y: Number(v.y) || 0,
-      z: Number(v.z) || 0,
-      color: parseColor(v.color)
-    }));
-  }
-
+export function compileDetailedPayload(payload: DetailedVoxelModelPayload): VoxelData[] {
   const builder = new VoxelBuilder();
 
-  // 1. Expand composite boxes
-  if (payload.boxes && Array.isArray(payload.boxes)) {
-    payload.boxes.forEach(box => {
-      if (box.min && box.max && box.color) {
-        if (box.symmetricX && (Math.abs(box.min[0]) > 0.1 || Math.abs(box.max[0]) > 0.1)) {
-          builder.boxSymmetricX(
-            box.min[0], box.min[1], box.min[2],
-            box.max[0], box.max[1], box.max[2],
-            box.color
-          );
-        } else {
-          builder.box(
-            box.min[0], box.min[1], box.min[2],
-            box.max[0], box.max[1], box.max[2],
-            box.color
-          );
-        }
-      }
-    });
-  }
+  payload.boxes.forEach((vol: BoxVolume) => {
+    const [x1, y1, z1] = vol.min;
+    const [x2, y2, z2] = vol.max;
+    builder.box(x1, y1, z1, x2, y2, z2, vol.color);
+  });
 
-  // Expand composite cylinders
-  if (payload.cylinders && Array.isArray(payload.cylinders)) {
-    payload.cylinders.forEach(cyl => {
-      if (typeof cyl.cx === 'number' && typeof cyl.y1 === 'number' && typeof cyl.y2 === 'number' && typeof cyl.cz === 'number') {
-        const minY = Math.min(cyl.y1, cyl.y2);
-        const maxY = Math.max(cyl.y1, cyl.y2);
-        if (cyl.symmetricX && Math.abs(cyl.cx) > 0.1) {
-          builder.cylinderYSymmetricX(cyl.cx, minY, maxY, cyl.cz, cyl.radius, cyl.color);
-        } else {
-          builder.cylinderY(cyl.cx, minY, maxY, cyl.cz, cyl.radius, cyl.color);
-        }
-      }
-    });
-  }
-
-  // Expand composite spheres
-  if (payload.spheres && Array.isArray(payload.spheres)) {
-    payload.spheres.forEach(sph => {
-      if (typeof sph.cx === 'number' && typeof sph.cy === 'number' && typeof sph.cz === 'number') {
-        if (sph.symmetricX && Math.abs(sph.cx) > 0.1) {
-          builder.sphereSymmetricX(sph.cx, sph.cy, sph.cz, sph.radius, sph.color);
-        } else {
-          builder.sphere(sph.cx, sph.cy, sph.cz, sph.radius, sph.color);
-        }
-      }
-    });
-  }
-
-  // 2. Add fine-detail discrete voxels
-  if (payload.voxels && Array.isArray(payload.voxels)) {
-    payload.voxels.forEach(v => {
-      if (typeof v.x === 'number' && typeof v.y === 'number' && typeof v.z === 'number') {
-        builder.set(v.x, v.y, v.z, v.color);
-      }
-    });
-  }
-
-  return builder.build();
+  return builder.cullInternalVoxels().applyLightingShading().build();
 }
