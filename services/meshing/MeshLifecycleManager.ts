@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { SimulationVoxel, VoxelData, RenderMode, AppState } from '../../types';
+import { SimulationVoxel, VoxelData, RenderMode, AppState, MeshStats } from '../../types';
 import { CONFIG } from '../../utils/voxelConstants';
 import { VoxelMesher, GreedyMeshResult } from './VoxelMesher';
 import { SmoothMesher } from './SmoothMesher';
@@ -28,7 +28,7 @@ export class MeshLifecycleManager {
     scene: THREE.Scene,
     data: VoxelData[],
     opts: { marchingRes: number; marchingSmooth: number; wireframe: boolean; shadows: boolean },
-    onStatsChange: (stats: any) => void,
+    onStatsChange: (stats: MeshStats) => void,
     renderMode: RenderMode,
     appState: AppState = AppState.STABLE,
   ): SimulationVoxel[] {
@@ -46,7 +46,9 @@ export class MeshLifecycleManager {
     }));
 
     this.buildMergedMesh(scene, data, opts.wireframe, opts.shadows);
-    this.buildSmoothMesh(scene, data, opts.marchingRes, opts.marchingSmooth, opts.wireframe, opts.shadows);
+    if (renderMode === RenderMode.SMOOTH_MARCHING) {
+      this.buildSmoothMesh(scene, data, opts.marchingRes, opts.marchingSmooth, opts.wireframe, opts.shadows);
+    }
     this.buildSegmentedMesh(scene, voxels, opts.wireframe, opts.shadows);
     this.buildDynamicPhysicsMesh(scene, voxels, opts.wireframe, opts.shadows);
     this.drawSegmentedMesh(voxels);
@@ -56,32 +58,16 @@ export class MeshLifecycleManager {
     return voxels;
   }
 
-  rebuildMeshesForTarget(
-    scene: THREE.Scene,
-    targetModel: VoxelData[],
-    opts: { marchingRes: number; marchingSmooth: number; wireframe: boolean; shadows: boolean },
-    onStatsChange: (stats: any) => void,
-    renderMode: RenderMode,
-    appState: AppState = AppState.STABLE,
-  ): SimulationVoxel[] {
-    return this.createAllMeshes(scene, targetModel, opts, onStatsChange, renderMode, appState);
-  }
-
   clearAll(scene: THREE.Scene) {
     [this.dynamicPhysicsMesh, this.segmentedMesh].forEach(m => {
-      if (m) { scene.remove(m); m.dispose(); }
+      if (m) { scene.remove(m); this.disposeMesh(m); }
     });
     this.dynamicPhysicsMesh = null;
     this.segmentedMesh = null;
 
     if (this.mergedMesh) {
       scene.remove(this.mergedMesh);
-      if (this.mergedMesh.geometry) this.mergedMesh.geometry.dispose();
-      if (Array.isArray(this.mergedMesh.material)) {
-        this.mergedMesh.material.forEach(m => m.dispose());
-      } else if (this.mergedMesh.material) {
-        (this.mergedMesh.material as THREE.Material).dispose();
-      }
+      this.disposeMesh(this.mergedMesh);
       this.mergedMesh = null;
     }
 
@@ -89,12 +75,7 @@ export class MeshLifecycleManager {
     this.lastSmoothTriangleCount = 0;
     if (this.smoothMesh) {
       scene.remove(this.smoothMesh);
-      if (this.smoothMesh.geometry) this.smoothMesh.geometry.dispose();
-      if (Array.isArray(this.smoothMesh.material)) {
-        this.smoothMesh.material.forEach(m => m.dispose());
-      } else if (this.smoothMesh.material) {
-        (this.smoothMesh.material as THREE.Material).dispose();
-      }
+      this.disposeMesh(this.smoothMesh);
       this.smoothMesh = null;
     }
   }
@@ -102,7 +83,7 @@ export class MeshLifecycleManager {
   // ── Individual mesh builders ──
 
   buildSegmentedMesh(scene: THREE.Scene, voxels: SimulationVoxel[], wireframe: boolean, shadows: boolean) {
-    if (this.segmentedMesh) { scene.remove(this.segmentedMesh); this.segmentedMesh.dispose(); }
+    if (this.segmentedMesh) { scene.remove(this.segmentedMesh); this.disposeMesh(this.segmentedMesh); }
     if (voxels.length === 0) return;
 
     const geo = new THREE.BoxGeometry(1.0, 1.0, 1.0);
@@ -115,7 +96,7 @@ export class MeshLifecycleManager {
   }
 
   buildDynamicPhysicsMesh(scene: THREE.Scene, voxels: SimulationVoxel[], wireframe: boolean, shadows: boolean) {
-    if (this.dynamicPhysicsMesh) { scene.remove(this.dynamicPhysicsMesh); this.dynamicPhysicsMesh.dispose(); }
+    if (this.dynamicPhysicsMesh) { scene.remove(this.dynamicPhysicsMesh); this.disposeMesh(this.dynamicPhysicsMesh); }
     if (voxels.length === 0) return;
 
     const geo = new THREE.BoxGeometry(0.92, 0.92, 0.92);
@@ -131,7 +112,7 @@ export class MeshLifecycleManager {
     if (!this.dynamicPhysicsMesh || this.dynamicPhysicsMesh.count < requiredCapacity) {
       if (this.dynamicPhysicsMesh) {
         scene.remove(this.dynamicPhysicsMesh);
-        this.dynamicPhysicsMesh.dispose();
+        this.disposeMesh(this.dynamicPhysicsMesh);
       }
       const geo = new THREE.BoxGeometry(0.92, 0.92, 0.92);
       const mat = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.12, wireframe });
@@ -146,8 +127,7 @@ export class MeshLifecycleManager {
   buildMergedMesh(scene: THREE.Scene, data: VoxelData[], wireframe: boolean, shadows: boolean) {
     if (this.mergedMesh) {
       scene.remove(this.mergedMesh);
-      if (this.mergedMesh.geometry) this.mergedMesh.geometry.dispose();
-      if (this.mergedMesh.material) (this.mergedMesh.material as THREE.Material).dispose();
+      this.disposeMesh(this.mergedMesh);
       this.mergedMesh = null;
     }
     if (data.length === 0) return;
@@ -169,12 +149,7 @@ export class MeshLifecycleManager {
   buildSmoothMesh(scene: THREE.Scene, data: VoxelData[], resolution: number, smoothness: number, wireframe: boolean, shadows: boolean) {
     if (this.smoothMesh) {
       scene.remove(this.smoothMesh);
-      if (this.smoothMesh.geometry) this.smoothMesh.geometry.dispose();
-      if (Array.isArray(this.smoothMesh.material)) {
-        this.smoothMesh.material.forEach(m => m.dispose());
-      } else if (this.smoothMesh.material) {
-        (this.smoothMesh.material as THREE.Material).dispose();
-      }
+      this.disposeMesh(this.smoothMesh);
       this.smoothMesh = null;
     }
     if (data.length === 0) return;
@@ -184,10 +159,6 @@ export class MeshLifecycleManager {
 
     const idx = smoothMesh.geometry.index;
     this.lastSmoothTriangleCount = idx ? Math.floor(idx.count / 3) : 0;
-
-    smoothMesh.material = new THREE.MeshStandardMaterial({
-      vertexColors: true, side: THREE.DoubleSide, metalness: 0.1, roughness: 0.55, wireframe,
-    });
     smoothMesh.castShadow = shadows;
     smoothMesh.receiveShadow = shadows;
     smoothMesh.visible = false;
@@ -197,7 +168,7 @@ export class MeshLifecycleManager {
 
   // ── Visibility + wireframe + draw ──
 
-  updateVisibility(voxelCount: number, renderMode: RenderMode, appState: AppState, onStatsChange: (stats: any) => void) {
+  updateVisibility(voxelCount: number, renderMode: RenderMode, appState: AppState, onStatsChange: (stats: MeshStats) => void) {
     const isDynamic = appState !== AppState.STABLE;
 
     if (isDynamic) {
@@ -236,6 +207,8 @@ export class MeshLifecycleManager {
   setWireframe(enabled: boolean) {
     if (this.mergedMesh) (this.mergedMesh.material as THREE.MeshStandardMaterial).wireframe = enabled;
     if (this.smoothMesh) (this.smoothMesh.material as THREE.MeshStandardMaterial).wireframe = enabled;
+    if (this.segmentedMesh) (this.segmentedMesh.material as THREE.MeshStandardMaterial).wireframe = enabled;
+    if (this.dynamicPhysicsMesh) (this.dynamicPhysicsMesh.material as THREE.MeshStandardMaterial).wireframe = enabled;
   }
 
   drawDynamicPhysics(voxels: SimulationVoxel[]) {
@@ -270,28 +243,27 @@ export class MeshLifecycleManager {
 
   dispose() {
     [this.dynamicPhysicsMesh, this.segmentedMesh].forEach(m => {
-      if (m) {
-        if (m.geometry) m.geometry.dispose();
-        if (Array.isArray(m.material)) m.material.forEach(mat => mat.dispose());
-        else if (m.material) (m.material as THREE.Material).dispose();
-        m.dispose();
-      }
+      if (m) this.disposeMesh(m);
     });
     if (this.mergedMesh) {
-      if (this.mergedMesh.geometry) this.mergedMesh.geometry.dispose();
-      if (Array.isArray(this.mergedMesh.material)) {
-        this.mergedMesh.material.forEach(m => m.dispose());
-      } else if (this.mergedMesh.material) {
-        (this.mergedMesh.material as THREE.Material).dispose();
-      }
+      this.disposeMesh(this.mergedMesh);
     }
     if (this.smoothMesh) {
-      if (this.smoothMesh.geometry) this.smoothMesh.geometry.dispose();
-      if (Array.isArray(this.smoothMesh.material)) {
-        this.smoothMesh.material.forEach(m => m.dispose());
-      } else if (this.smoothMesh.material) {
-        (this.smoothMesh.material as THREE.Material).dispose();
-      }
+      this.disposeMesh(this.smoothMesh);
     }
+
+    this.dynamicPhysicsMesh = null;
+    this.segmentedMesh = null;
+    this.mergedMesh = null;
+    this.smoothMesh = null;
+    this.lastCulledResult = null;
+    this.lastSmoothTriangleCount = 0;
+  }
+
+  private disposeMesh(mesh: THREE.Mesh): void {
+    mesh.geometry.dispose();
+    if (Array.isArray(mesh.material)) mesh.material.forEach(material => material.dispose());
+    else mesh.material.dispose();
+    if (mesh instanceof THREE.InstancedMesh) mesh.dispose();
   }
 }

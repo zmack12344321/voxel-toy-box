@@ -4,10 +4,10 @@
 */
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { VoxelData, SceneWater } from "../../types";
+import { VoxelData, SceneWater, AnimatedEntity } from "../../types";
 import { compileDetailedPayload } from "../../models/builder";
-import { compileDeclarativePayload } from "../rasterizer/index";
-import { DeclarativeModelPayload } from "../../models/declarativeTypes";
+import { compileSceneSpec } from "../rasterizer/index";
+import { DeclarativeModelPayload, SceneSpec } from "../../models/declarativeTypes";
 import { DetailedVoxelModelPayload } from "../../models/types";
 import { CatalogRetriever } from "./CatalogRetriever";
 
@@ -30,9 +30,14 @@ export class GeminiVoxelService {
   }
 
   /**
-   * Generates a 3D high-detail model using high-level declarative primitives + micro accents.
+   * Generates a 3D high-detail model using high-level declarative primitives + micro accents + animated entities.
    */
-  public static async generateModel(options: GenerationOptions): Promise<{ name: string; data: VoxelData[]; water: SceneWater | null }> {
+  public static async generateModel(options: GenerationOptions): Promise<{
+    name: string;
+    data: VoxelData[];
+    water: SceneWater | null;
+    animatedEntities?: AnimatedEntity[];
+  }> {
     const ai = this.getAI();
     const model = 'gemini-3.7-flash';
 
@@ -69,15 +74,29 @@ DECLARATIVE DSL VOCABULARY & RULES:
    - Repetition Loops: 'repeat' (count, step: [dx,dy,dz], command) and 'radialRepeat' (count, radius, axis: "y"|"z", command).
    - Micro Accents: 'accents' (list of { at: [x,y,z], color: "key", mirror: "x" } for pinpoint eyes, glow runes, headlights, buttons, rivets).
 
-2. SPATIAL ALIGNMENT & ROTATION:
+2. ANIMATED PATH ENTITIES:
+   - When the user asks for dynamic motion (e.g. birds flying overhead, fish swimming around reefs, dragons circling a tower, speeders racing on a track):
+   - Include an 'animatedEntities' array where each entity follows a closed-loop 3D Catmull-Rom spline trajectory:
+     "animatedEntities": [
+       {
+         "id": "flying_birds",
+         "speed": 0.08,
+         "waypoints": [[0, 16, 12], [14, 18, 0], [0, 17, -14], [-14, 19, 0]],
+         "commands": [
+           { "op": "wing", "from": [0,0,0], "span": [3.5, 1.2, -1.8], "rootChord": 1.8, "tipChord": 0.6, "color": "birdWhite", "mirror": "x" }
+         ]
+       }
+     ]
+
+3. SPATIAL ALIGNMENT & ROTATION:
    - Center horizontally around x=0, z=0. Ground level begins at y=0.
    - Use 'rotation': [rx, ry, rz] to tilt, angle, or orient shapes in 3D space.
 
-3. PALETTE:
+4. PALETTE:
    - Define named color keys in 'palette' (e.g. "primary", "secondary", "trim", "glow", "dark", "wood", "foliage").
    - Can use hex strings or objects with PBR attributes: { "glow": { "color": "#ff007f", "emissive": true }, "metal": { "color": "#888899", "metalness": 0.8, "roughness": 0.2 } }.
 
-4. CONTEXTUAL CATALOG FEW-SHOT EXAMPLES:
+5. CONTEXTUAL CATALOG FEW-SHOT EXAMPLES:
 Use the structural patterns and alignment conventions demonstrated in these matched reference recipes:
 ${fewShotExamples}
 
@@ -87,11 +106,7 @@ OUTPUT JSON SCHEMA:
   "palette": { "primary": "#hex", "secondary": "#hex", "trim": "#hex", "glow": { "color": "#hex", "emissive": true } },
   "commands": [
     { "op": "box", "at": [0, 5, 0], "size": [10, 10, 10], "color": "primary", "rotation": [0, 45, 0] },
-    { "op": "spline_pipe", "points": [[0,0,0], [5,4,2], [10,2,8]], "thickness": 2, "color": "secondary" },
-    { "op": "capsule", "from": [5, 5, 0], "to": [12, 8, 0], "radiusStart": 2, "radiusEnd": 1, "color": "secondary", "mirror": "x" },
-    { "op": "wing", "from": [5, 5, 0], "span": [10, 0, -4], "rootChord": 6, "tipChord": 2, "color": "primary", "mirror": "x" },
-    { "op": "wedge", "at": [0, 11, 2], "size": [8, 3, 6], "direction": "+z", "color": "trim" },
-    { "op": "accents", "voxels": [{ "at": [2, 7, 5], "color": "glow", "mirror": "x" }] }
+    { "op": "spline_pipe", "points": [[0,0,0], [5,4,2], [10,2,8]], "thickness": 2, "color": "secondary" }
   ]
 }
 `;
@@ -108,25 +123,29 @@ OUTPUT JSON SCHEMA:
       throw new Error("No response returned from Gemini API");
     }
 
-    let parsed: any;
+    let parsed: Record<string, unknown>;
     try {
-      parsed = JSON.parse(response.text.trim());
+      const value: unknown = JSON.parse(response.text.trim());
+      parsed = isRecord(value) ? value : {};
     } catch (e) {
       throw new Error("Failed to parse AI 3D response.");
     }
 
     let voxelData: VoxelData[] = [];
     let water: SceneWater | null = null;
+    let animatedEntities: AnimatedEntity[] | undefined = undefined;
 
     // Handle Declarative format
-    if (parsed.commands && Array.isArray(parsed.commands)) {
-      const declarativePayload: DeclarativeModelPayload = parsed;
-      const compiled = compileDeclarativePayload(declarativePayload);
+    if (isDeclarativePayload(parsed)) {
+      const declarativePayload = parsed;
+      const sceneSpec: SceneSpec = { model: declarativePayload };
+      const compiled = compileSceneSpec(sceneSpec);
       voxelData = compiled.voxels;
       water = compiled.water;
-    } else if (parsed.boxes || parsed.voxels) {
+      animatedEntities = compiled.animatedEntities;
+    } else if (isLegacyPayload(parsed)) {
       // Backwards compatibility for legacy box/voxel format
-      const legacyPayload: DetailedVoxelModelPayload = parsed;
+      const legacyPayload = parsed;
       voxelData = compileDetailedPayload(legacyPayload);
     }
 
@@ -134,13 +153,30 @@ OUTPUT JSON SCHEMA:
       throw new Error("The generated model produced no 3D geometry. Please try a different prompt.");
     }
 
-    const name = parsed.name && typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : prompt;
+    const name = typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : prompt;
 
     return {
       name,
       data: voxelData,
-      water
+      water,
+      animatedEntities
     };
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isDeclarativePayload(value: unknown): value is DeclarativeModelPayload {
+  return isRecord(value) && Array.isArray(value.commands);
+}
+
+function isLegacyPayload(value: unknown): value is DetailedVoxelModelPayload {
+  return isRecord(value) && (
+    Array.isArray(value.boxes) ||
+    Array.isArray(value.cylinders) ||
+    Array.isArray(value.spheres) ||
+    Array.isArray(value.voxels)
+  );
+}

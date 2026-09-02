@@ -1,11 +1,10 @@
 /**
  * Zustand store for scene settings.
- * Each toggle/action reads the engine from useEngineStore and calls the
- * corresponding VoxelEngine method, then updates local state.
+ * Scene settings update local state and delegate runtime changes through SceneController.
  */
 import { create } from 'zustand';
 import { SceneSettings, SceneTheme, RenderMode } from '../types';
-import { useEngineStore } from './useEngineStore';
+import { sceneController } from '../services/application';
 
 const DEFAULTS: SceneSettings = {
   autoRotate: false,
@@ -37,8 +36,6 @@ interface SceneStore extends SceneSettings {
   setVoxelSpacing: (v: number) => void;
 }
 
-const engine = () => useEngineStore.getState().engine;
-
 export const useSceneStore = create<SceneStore>((set) => ({
   ...DEFAULTS,
 
@@ -46,7 +43,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
     set((s) => {
       const next = !s.autoRotate;
       console.log(`[SceneStore] toggleAutoRotate -> ${next}`);
-      engine()?.setAutoRotate(next);
+      sceneController.setAutoRotate(next);
       return { autoRotate: next };
     }),
 
@@ -54,7 +51,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
     set((s) => {
       const next = !s.fog;
       console.log(`[SceneStore] toggleFog -> ${next}`);
-      engine()?.setFog(next);
+      sceneController.setFog(next);
       return { fog: next };
     }),
 
@@ -62,7 +59,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
     set((s) => {
       const next = !s.gridFloor;
       console.log(`[SceneStore] toggleGridFloor -> ${next}`);
-      engine()?.setGridFloor(next);
+      sceneController.setGridFloor(next);
       return { gridFloor: next };
     }),
 
@@ -70,7 +67,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
     set((s) => {
       const next = !s.groundPlane;
       console.log(`[SceneStore] toggleGroundPlane -> ${next}`);
-      engine()?.setGroundPlane(next);
+      sceneController.setGroundPlane(next);
       return { groundPlane: next };
     }),
 
@@ -78,7 +75,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
     set((s) => {
       const next = !s.shadows;
       console.log(`[SceneStore] toggleShadows -> ${next}`);
-      engine()?.setShadows(next);
+      sceneController.setShadows(next);
       return { shadows: next };
     }),
 
@@ -86,49 +83,49 @@ export const useSceneStore = create<SceneStore>((set) => ({
     set((s) => {
       const next = !s.wireframe;
       console.log(`[SceneStore] toggleWireframe -> ${next}`);
-      engine()?.setWireframe(next);
+      sceneController.setWireframe(next);
       return { wireframe: next };
     }),
 
   setTheme: (theme) =>
     set(() => {
       console.log(`[SceneStore] setTheme -> ${theme}`);
-      engine()?.setTheme(theme);
+      sceneController.setTheme(theme);
       return { theme };
     }),
 
   setRenderMode: (renderMode) =>
     set(() => {
       console.log(`[SceneStore] setRenderMode -> ${renderMode}`);
-      engine()?.setRenderMode(renderMode);
+      sceneController.setRenderMode(renderMode);
       return { renderMode };
     }),
 
   setMarchingSmoothness: (marchingSmoothness) =>
     set(() => {
       console.log(`[SceneStore] setMarchingSmoothness -> ${marchingSmoothness}`);
-      engine()?.setMarchingSmoothness(marchingSmoothness);
+      sceneController.setMarchingSmoothness(marchingSmoothness);
       return { marchingSmoothness };
     }),
 
   setMarchingResolution: (marchingResolution) =>
     set(() => {
       console.log(`[SceneStore] setMarchingResolution -> ${marchingResolution}`);
-      engine()?.setMarchingResolution(marchingResolution);
+      sceneController.setMarchingResolution(marchingResolution);
       return { marchingResolution };
     }),
 
   setVoxelDensity: (voxelDensity) =>
     set(() => {
       console.log(`[SceneStore] setVoxelDensity -> ${voxelDensity}`);
-      engine()?.setVoxelDensity(voxelDensity);
+      sceneController.setVoxelDensity(voxelDensity);
       return { voxelDensity };
     }),
 
   setVoxelSpacing: (voxelSpacing) =>
     set(() => {
       console.log(`[SceneStore] setVoxelSpacing -> ${voxelSpacing}`);
-      engine()?.setVoxelSpacing(voxelSpacing);
+      sceneController.setVoxelSpacing(voxelSpacing);
       return { voxelSpacing };
     }),
 }));

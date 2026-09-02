@@ -4,6 +4,8 @@
  */
 
 export type MirrorAxis = 'none' | 'x' | 'z' | 'xz';
+import type { RadialRepeatCommand, RepeatCommand, ScatterCommand } from './commands/placement';
+import type { SceneCommand } from './commands/scene';
 
 // Core Declarative Commands
 export type DeclarativeShapeCommand =
@@ -216,39 +218,11 @@ export type DeclarativeShapeCommand =
       mirror?: MirrorAxis;
     }
   // Biome Surface & Water (metadata + expansion)
-  | {
-      op: 'water' | 'water_surface';
-      at: [number, number, number];
-      size: [number, number];
-      color: string;
-      opacity?: number;
-      mirror?: MirrorAxis;
-    }
-  | {
-      op: 'desert' | 'snow' | 'forest_floor';
-      at: [number, number, number];
-      size: [number, number, number];
-      roughness?: number;
-      color?: string;
-      underColor?: string;
-      accentColor?: string;
-      mirror?: MirrorAxis;
-    }
+  | SceneCommand
+  | ScatterCommand
   // Repetition Modifiers
-  | {
-      op: 'repeat';
-      count: number;
-      step: [number, number, number];
-      command: DeclarativeShapeCommand;
-    }
-  | {
-      op: 'radialRepeat';
-      count: number;
-      radius: number;
-      center?: [number, number, number];
-      axis?: 'x' | 'y' | 'z';
-      command: DeclarativeShapeCommand;
-    }
+  | RepeatCommand
+  | RadialRepeatCommand
   // Tier 3: Micro-Accents
   | {
       op: 'accents';
@@ -266,10 +240,31 @@ export type PaletteEntry = string | {
   emissive?: boolean | string;
 };
 
-export interface DeclarativeModelPayload {
+export interface AnimatedEntityDescriptor {
+  id: string;
+  waypoints: Array<[number, number, number]>;
+  speed?: number; // Progress speed along 3D Catmull-Rom spline path (0.05 - 0.5 per sec)
+  commands: DeclarativeShapeCommand[];
+}
+
+/** Canonical geometry contract. Legacy payloads remain structurally compatible. */
+export interface ModelSpec {
   name?: string;
   description?: string;
   palette?: Record<string, PaletteEntry>;
   commands: DeclarativeShapeCommand[];
+  animatedEntities?: AnimatedEntityDescriptor[];
 }
 
+/** Placement constraints kept separate from model geometry in canonical scenes. */
+export type PlacementRule = Omit<ScatterCommand, 'op'>;
+
+/** Canonical scene contract. Adapter compiles this into legacy command payloads. */
+export interface SceneSpec {
+  model: ModelSpec;
+  sceneCommands?: SceneCommand[];
+  placementRules?: PlacementRule[];
+}
+
+/** Compatibility name for existing callers and persisted payloads. */
+export type DeclarativeModelPayload = ModelSpec;

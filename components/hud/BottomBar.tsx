@@ -7,20 +7,20 @@ import React from 'react';
 import { Hammer } from 'lucide-react';
 import { AppState } from '../../types';
 import { useEngineStore } from '../../store';
+import { sceneController } from '../../services/application';
 import { BigActionButton } from '../ui/buttons';
 import { RebuildMenu } from './RebuildMenu';
 
 export const BottomBar: React.FC = () => {
   const appState = useEngineStore((s) => s.appState);
   const isGenerating = useEngineStore((s) => s.isGenerating);
-  const engine = useEngineStore((s) => s.engine);
 
   const isStable = appState === AppState.STABLE;
   const isDismantling = appState === AppState.DISMANTLING;
 
   const handleDismantle = () => {
     console.log('[BottomBar] BREAK BLOCKS clicked');
-    engine?.dismantle();
+      sceneController.dismantle();
   };
 
   return (

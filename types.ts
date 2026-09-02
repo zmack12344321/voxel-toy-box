@@ -48,7 +48,28 @@ export interface RebuildTarget {
 export interface SavedModel {
   name: string;
   data: VoxelData[];
+  water?: SceneWater | null;
+  animatedEntities?: AnimatedEntity[];
   baseModel?: string;
+  id?: string;
+  timestamp?: number;
+  prompt?: string;
+  palettePreview?: string[];
+  thumbnailUrl?: string;
+}
+
+export interface AnimatedEntity {
+  id: string;
+  waypoints: Array<[number, number, number]>;
+  speed: number;
+  voxels: VoxelData[];
+}
+
+/** Complete renderable scene payload exchanged across the application boundary. */
+export interface ScenePayload {
+  data: VoxelData[];
+  water?: SceneWater | null;
+  animatedEntities?: AnimatedEntity[];
 }
 
 export type SceneTheme = 'light' | 'dark' | 'studio' | 'dusk';

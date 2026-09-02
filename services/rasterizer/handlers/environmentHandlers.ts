@@ -4,16 +4,18 @@
  */
 
 import { DeclarativeShapeCommand } from '../../../models/declarativeTypes';
-import { desertTerrain, snowTerrain, forestFloor } from '../../../utils/biomeHelpers';
+import type { SceneWater } from '../../../types';
+import { desertTerrain, snowTerrain, forestFloor, tropicalIslandTerrain, coralReefBed } from '../../../utils/biomes';
+import { executeScatter } from '../../../utils/scatterEngine';
 import { RasterizerState, resolveColor, getMirroredPositions } from '../helpers';
 import { rasterizeTree, rasterizeTerrain, rasterizeFence } from '../shapes';
 
 export function handleEnvironmentCommand(
   state: RasterizerState,
   cmd: DeclarativeShapeCommand,
-  waterRef: { value: { level: number; extent: [number, number]; color: number; opacity: number } | null },
+  waterRef: { value: SceneWater | null },
   self: { executeCommand: (cmd: DeclarativeShapeCommand) => void }
-): { handled: boolean; water?: { level: number; extent: [number, number]; color: number; opacity: number } | null } {
+): { handled: boolean; water?: SceneWater | null } {
   switch (cmd.op) {
     case 'tree':
     case 'foliage': {
@@ -61,6 +63,21 @@ export function handleEnvironmentCommand(
     }
     case 'forest_floor': {
       const sub = forestFloor(cmd.at, cmd.size, cmd.color, cmd.underColor, cmd.accentColor, cmd.mirror, cmd.roughness);
+      for (const c of sub) self.executeCommand(c);
+      return { handled: true };
+    }
+    case 'tropical_island': {
+      const sub = tropicalIslandTerrain(cmd.at, cmd.size, cmd.palmCount ?? 8, cmd.mirror, cmd.seed);
+      for (const c of sub) self.executeCommand(c);
+      return { handled: true };
+    }
+    case 'coral_reef_bed': {
+      const sub = coralReefBed(cmd.center, cmd.innerRadius ?? 28, cmd.outerRadius ?? 36, cmd.mirror);
+      for (const c of sub) self.executeCommand(c);
+      return { handled: true };
+    }
+    case 'scatter': {
+      const sub = executeScatter(state, cmd, waterRef.value?.level);
       for (const c of sub) self.executeCommand(c);
       return { handled: true };
     }

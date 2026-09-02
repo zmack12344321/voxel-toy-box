@@ -74,7 +74,7 @@ export class ViewHelperManager {
     this.renderer.autoClear = false;
 
     const origSetViewport = this.renderer.setViewport.bind(this.renderer);
-    this.renderer.setViewport = (vx: any, vy: any, vw: any, vh: any) => {
+    this.renderer.setViewport = (vx: number, vy: number, vw: number, vh: number) => {
       if (typeof vx === 'number' && vw === dim && vh === dim) {
         return origSetViewport(targetX, targetY, dim, dim);
       }

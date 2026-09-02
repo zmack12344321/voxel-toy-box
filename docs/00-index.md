@@ -4,7 +4,8 @@ Documentation for project architecture, core engine services, and declarative LL
 
 ## System Documentation
 
-- **[System Architecture & Overview](architecture.md)** — Project structure, core types (`types.ts`), configuration, `VoxelEngine` services, Zustand state management stores, component hierarchy, and data flow.
+- **[System Architecture & Overview](architecture.md)** — Project structure, application services, declarative contracts, runtime composition, state boundaries, and data flow.
+- **[Architecture Roadmap](architecture/ROADMAP.md)** — Incremental refactor milestones, exit criteria, and change protocol.
 
 ## Declarative Asset Catalog
 
@@ -49,7 +50,7 @@ All items use ops from [`models/declarativeTypes.ts`](../models/declarativeTypes
 - **Structural:** `arch`, `doorway`, `stairs`, `spiral_stairs`, `ring`, `wheel`, `torus`, `dome`, `hemisphere`
 - **Detail:** `poly_prism`, `polygon_extrude`, `wing`, `fin`, `fence`, `railing`, `trim`, `bevel_edges`, `line`, `pipe`
 - **Nature:** `tree`, `foliage`, `terrain`, `noise_patch`, `water`, `water_surface`
-- **Biomes:** `desert`, `snow`, `forest_floor` (via [`utils/biomeHelpers.ts`](../utils/biomeHelpers.ts))
+- **Biomes:** `desert`, `snow`, `forest_floor` (via [`utils/biomes`](../utils/biomes/))
 - **CSG:** `carve_box`, `carve_sphere`, `carve_cylinder`
 - **Modifiers:** `repeat`, `radialRepeat`, `accents`
 - **Mirroring:** `mirror: "none" | "x" | "z" | "xz"` on applicable commands
@@ -60,7 +61,7 @@ All items use ops from [`models/declarativeTypes.ts`](../models/declarativeTypes
 2. Composes `commands` array with optional `palette` map.
 3. [`services/rasterizer/index.ts`](../services/rasterizer/index.ts) executes commands via `compileDeclarativePayload()`.
 4. Commands rasterize into a centered `VoxelData[]` array and extract optional `SceneWater` metadata for engine rendering.
-5. [`services/VoxelEngine.ts`](../services/VoxelEngine.ts) loads generated voxel model and water plane into Three.js scene.
+5. [`services/application/SceneController.ts`](../services/application/SceneController.ts) applies compiled models and scene metadata to the Three.js runtime.
 
 ## Codebase Model Categories
 

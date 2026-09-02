@@ -23,7 +23,7 @@ Complete environment presets combining terrain, water, vegetation, and accents.
 ## Biome Composition Pattern
 
 Each biome is composed as a sequence of:
-1. Base terrain (`terrain`, `desert`, `snow`, `forest_floor` ops via [`utils/biomeHelpers.ts`](../utils/biomeHelpers.ts))
+1. Base terrain (`terrain`, `desert`, `snow`, `forest_floor` ops via [`utils/biomes`](../utils/biomes/))
 2. Water feature (`water` / `water_surface` op, compiled to [`SceneWater`](../types.ts))
 3. Vegetation (`tree` / `foliage` ops, repeated)
 4. Accent details (`accents` op)
@@ -31,7 +31,7 @@ Each biome is composed as a sequence of:
 
 ## Implementation Details
 
-The engine provides built-in procedural biome helper functions in [`utils/biomeHelpers.ts`](../utils/biomeHelpers.ts):
+The engine provides built-in procedural biome helper functions in [`utils/biomes`](../utils/biomes/):
 - `desertTerrain()`: Sand terrain + dune bumps + ripple accents
 - `snowTerrain()`: Snow terrain + low drifts + ice boulder spheres
 - `forestFloor()`: Forest floor terrain + scattered trees + moss accents

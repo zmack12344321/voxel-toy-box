@@ -25,3 +25,7 @@ dist-ssr
 
 # Scratch scripts
 scratch/
+
+# Local architecture/browser analysis artifacts
+graphify-out/
+.playwright-cli/

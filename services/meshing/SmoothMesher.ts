@@ -8,6 +8,8 @@ import { VoxelData } from '../../types';
 import { VoxelMesher } from './VoxelMesher';
 import { applyTaubinSmoothing } from './taubinSmoothing';
 
+type MeshWithTriangleCount = THREE.Mesh & { triangleCount?: number };
+
 export class SmoothMesher {
   public static buildSmoothMesh(
     voxels: VoxelData[],
@@ -34,7 +36,7 @@ export class SmoothMesher {
       const mesh = new THREE.Mesh(meshResult.geometry, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      (mesh as any).triangleCount = meshResult.triangleCount;
+      (mesh as MeshWithTriangleCount).triangleCount = meshResult.triangleCount;
       return mesh;
     }
 
@@ -147,7 +149,7 @@ export class SmoothMesher {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    (mesh as any).triangleCount = indices.length / 3;
+    (mesh as MeshWithTriangleCount).triangleCount = indices.length / 3;
 
     return mesh;
   }

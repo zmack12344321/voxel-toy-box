@@ -173,13 +173,19 @@ export function rasterizeTree(
     rasterizeSphere(state, [cx + canopyRadius * 0.4, canopyBaseY + canopyRadius * 0.8, cz], [canopyRadius * 0.6, canopyRadius * 0.6, canopyRadius * 0.6], foliageColor, false, mirror);
     rasterizeSphere(state, [cx - canopyRadius * 0.3, canopyBaseY + canopyRadius * 0.9, cz + canopyRadius * 0.3], [canopyRadius * 0.5, canopyRadius * 0.5, canopyRadius * 0.5], foliageColor, false, mirror);
   } else if (style === 'palm') {
-    const fronds = 6;
+    const fronds = 8;
     for (let f = 0; f < fronds; f++) {
-      const angle = (f / fronds) * Math.PI * 2;
-      const tipX = cx + Math.cos(angle) * canopyRadius * 1.4;
-      const tipZ = cz + Math.sin(angle) * canopyRadius * 1.4;
-      const tipY = canopyBaseY - canopyRadius * 0.4;
-      rasterizeCapsule(state, [cx, canopyBaseY, cz], [tipX, tipY, tipZ], 1, 0.5, foliageColor, mirror);
+      const angle = (f / fronds) * Math.PI * 2 + (f % 2 === 0 ? 0.2 : 0);
+      const reach = canopyRadius * 1.6;
+      const midX = cx + Math.cos(angle) * (reach * 0.5);
+      const midZ = cz + Math.sin(angle) * (reach * 0.5);
+      const midY = canopyBaseY + canopyRadius * 0.3;
+      const tipX = cx + Math.cos(angle) * reach;
+      const tipZ = cz + Math.sin(angle) * reach;
+      const tipY = canopyBaseY - canopyRadius * 0.6;
+
+      rasterizeCapsule(state, [cx, canopyBaseY, cz], [midX, midY, midZ], 1.2, 0.9, foliageColor, mirror);
+      rasterizeCapsule(state, [midX, midY, midZ], [tipX, tipY, tipZ], 0.9, 0.4, foliageColor, mirror);
     }
   } else if (style === 'willow') {
     rasterizeSphere(state, [cx, canopyBaseY + canopyRadius * 0.5, cz], [canopyRadius, canopyRadius * 0.6, canopyRadius], foliageColor, false, mirror);

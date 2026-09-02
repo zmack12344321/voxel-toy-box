@@ -1,20 +1,43 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Voxel Thing
 
-# Run and deploy your AI Studio app
+Voxel Thing is a browser-based voxel scene builder. Users can load shipped models, import voxel data, generate declarative scenes with Gemini, morph between models, and inspect the result through an imperative Three.js renderer.
 
-This contains everything you need to run your app locally.
+## Local development
 
-View your app in AI Studio: https://ai.studio/apps/aba4aa28-6a06-4969-9bb5-5fc37dee184a
+Prerequisites: Node.js 20+.
 
-## Run Locally
+```bash
+npm install
+npm run dev
+```
 
-**Prerequisites:**  Node.js
+Set `GEMINI_API_KEY` in `.env.local` to enable AI generation. The app can still be developed and tested without making generation requests.
 
+## Verification
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+npm run test       # unit tests
+npx tsc --noEmit   # type check
+npm run build      # production build
+```
+
+## Architecture
+
+- [Architecture overview](docs/architecture.md) — current boundaries and runtime ownership.
+- [Architecture roadmap](docs/architecture/ROADMAP.md) — staged refactor decisions and exit criteria.
+- [Agent workflow](.agents/WORKFLOW.md) — change, testing, and documentation protocol.
+
+The application keeps React responsible for presentation and Zustand responsible for observable UI state. `SceneController` is the application boundary for renderer commands; `GenerationService` owns prompt-generation orchestration; declarative payloads compile into voxel data; focused runtime modules compose the Three.js engine.
+
+## Project layout
+
+```text
+components/                 React presentation
+models/                     presets, catalog, and declarative contracts
+services/application/       application-facing use cases and controller
+services/rasterizer/        declarative payload compiler
+services/runtime/           frame loop, loading, simulation, and rendering
+services/meshing/           voxel-to-mesh implementations
+store/                      observable UI state and intent dispatch
+tests/unit/                 deterministic compiler and boundary tests
+```

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { DeclarativeShapeCommand, PaletteEntry } from '../declarativeTypes';
+import { DeclarativeShapeCommand, PaletteEntry, AnimatedEntityDescriptor } from '../declarativeTypes';
 
 export interface CatalogAssetRecipe {
   id: string;
@@ -13,4 +13,5 @@ export interface CatalogAssetRecipe {
   description: string;
   palette: Record<string, PaletteEntry>;
   commands: DeclarativeShapeCommand[];
+  animatedEntities?: AnimatedEntityDescriptor[];
 }

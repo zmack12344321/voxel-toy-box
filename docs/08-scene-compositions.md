@@ -15,4 +15,4 @@ Multi-element environment scenes composed from declarative commands.
 1. LLM output maps to [`DeclarativeModelPayload`](../models/declarativeTypes.ts).
 2. Compiled using `compileDeclarativePayload()` in [`services/rasterizer/index.ts`](../services/rasterizer/index.ts).
 3. Evaluates commands, centers geometry, and extracts [`SceneWater`](../types.ts) metadata.
-4. Rendered in Three.js scene via [`services/VoxelEngine.ts`](../services/VoxelEngine.ts).
+4. Applied to the Three.js runtime via [`services/application/SceneController.ts`](../services/application/SceneController.ts).

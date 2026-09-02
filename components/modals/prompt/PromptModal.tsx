@@ -60,9 +60,10 @@ export const PromptModal: React.FC = () => {
       await submitPrompt(prompt, detailLevel);
       setPrompt('');
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.message || 'The voxel generator encountered an issue. Please try again.');
+      const message = err instanceof Error ? err.message : 'The voxel generator encountered an issue. Please try again.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }

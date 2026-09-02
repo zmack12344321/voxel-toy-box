@@ -7,13 +7,15 @@ import * as THREE from 'three';
 import { SimulationVoxel, VoxelData, RebuildTarget } from '../../types';
 import { CONFIG } from '../../utils/voxelConstants';
 
+export type PhysicsConfig = Pick<typeof CONFIG, 'FLOOR_Y' | 'GRAVITY' | 'AIR_RESISTANCE' | 'BOUNCE' | 'FRICTION'>;
+
 export class VoxelPhysics {
   rebuildStartTime = 0;
 
   /**
    * Initialize explosive dismantle physics for voxels.
    */
-  initDismantle(voxels: SimulationVoxel[], data: VoxelData[], hitPoint?: THREE.Vector3) {
+  initDismantle(voxels: SimulationVoxel[], hitPoint?: THREE.Vector3) {
     voxels.forEach((v, i) => {
       let vx = 0, vy = 0, vz = 0;
       if (hitPoint) {
@@ -49,14 +51,14 @@ export class VoxelPhysics {
   /**
    * Per-frame physics update during dismantle.
    */
-  updateDismantle(voxels: SimulationVoxel[], config: typeof CONFIG): boolean {
+  updateDismantle(voxels: SimulationVoxel[], config: PhysicsConfig): boolean {
     let allSettled = true;
 
     voxels.forEach(v => {
-      v.vy += CONFIG.GRAVITY;
-      v.vx *= CONFIG.AIR_RESISTANCE;
-      v.vy *= CONFIG.AIR_RESISTANCE;
-      v.vz *= CONFIG.AIR_RESISTANCE;
+      v.vy += config.GRAVITY;
+      v.vx *= config.AIR_RESISTANCE;
+      v.vy *= config.AIR_RESISTANCE;
+      v.vz *= config.AIR_RESISTANCE;
 
       v.x += v.vx;
       v.y += v.vy;
@@ -67,14 +69,14 @@ export class VoxelPhysics {
       v.rz += v.rvz;
 
       // Ground collision
-      if (v.y < CONFIG.FLOOR_Y + 0.5) {
-        v.y = CONFIG.FLOOR_Y + 0.5;
-        v.vy = -v.vy * CONFIG.BOUNCE;
-        v.vx *= CONFIG.FRICTION;
-        v.vz *= CONFIG.FRICTION;
-        v.rvx *= CONFIG.FRICTION;
-        v.rvy *= CONFIG.FRICTION;
-        v.rvz *= CONFIG.FRICTION;
+      if (v.y < config.FLOOR_Y + 0.5) {
+        v.y = config.FLOOR_Y + 0.5;
+        v.vy = -v.vy * config.BOUNCE;
+        v.vx *= config.FRICTION;
+        v.vz *= config.FRICTION;
+        v.rvx *= config.FRICTION;
+        v.rvy *= config.FRICTION;
+        v.rvz *= config.FRICTION;
       }
 
       if (Math.abs(v.vy) > 0.005 || Math.abs(v.vx) > 0.005 || Math.abs(v.vz) > 0.005) {
@@ -91,7 +93,7 @@ export class VoxelPhysics {
   initRebuild(
     voxels: SimulationVoxel[],
     targetModel: VoxelData[],
-    config: typeof CONFIG,
+    config: PhysicsConfig,
   ): { voxels: SimulationVoxel[]; targets: RebuildTarget[] } {
     this.rebuildStartTime = performance.now();
 
@@ -167,7 +169,7 @@ export class VoxelPhysics {
         const newVoxel: SimulationVoxel = {
           id: assignedVoxels.length,
           x: target.x + (Math.random() - 0.5) * 16,
-          y: CONFIG.FLOOR_Y + 0.5,
+          y: config.FLOOR_Y + 0.5,
           z: target.z + (Math.random() - 0.5) * 16,
           color: newColor,
           vx: 0, vy: 0, vz: 0,
@@ -196,7 +198,7 @@ export class VoxelPhysics {
       const radius = 26 + Math.random() * 12;
       assignedTargets.push({
         x: Math.cos(angle) * radius,
-        y: CONFIG.FLOOR_Y + 0.5,
+        y: config.FLOOR_Y + 0.5,
         z: Math.sin(angle) * radius,
         delay: Math.random() * 600,
         isRubble: true
@@ -212,7 +214,7 @@ export class VoxelPhysics {
   updateRebuild(
     voxels: SimulationVoxel[],
     targets: RebuildTarget[],
-    config: typeof CONFIG,
+    config: PhysicsConfig,
   ): boolean {
     const now = performance.now();
     const elapsed = now - this.rebuildStartTime;
@@ -223,14 +225,14 @@ export class VoxelPhysics {
       if (!t) return;
 
       if (elapsed < t.delay) {
-        v.vy += CONFIG.GRAVITY;
-        v.vx *= CONFIG.AIR_RESISTANCE;
-        v.vz *= CONFIG.AIR_RESISTANCE;
+        v.vy += config.GRAVITY;
+        v.vx *= config.AIR_RESISTANCE;
+        v.vz *= config.AIR_RESISTANCE;
         v.x += v.vx;
         v.y += v.vy;
         v.z += v.vz;
-        if (v.y < CONFIG.FLOOR_Y + 0.5) {
-          v.y = CONFIG.FLOOR_Y + 0.5;
+        if (v.y < config.FLOOR_Y + 0.5) {
+          v.y = config.FLOOR_Y + 0.5;
           v.vy = 0;
         }
         allDone = false;

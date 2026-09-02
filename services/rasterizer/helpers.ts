@@ -85,3 +85,20 @@ export function getMirroredPositions(x: number, y: number, z: number, mirror: Mi
   return pts;
 }
 
+export function getSurfaceHeight(state: RasterizerState, x: number, z: number, searchRadius = 0): number | null {
+  const rx = Math.round(x);
+  const rz = Math.round(z);
+
+  let maxY: number | null = null;
+
+  for (const v of state.map.values()) {
+    if (Math.abs(v.x - rx) <= searchRadius && Math.abs(v.z - rz) <= searchRadius) {
+      if (maxY === null || v.y > maxY) {
+        maxY = v.y;
+      }
+    }
+  }
+
+  return maxY;
+}
+

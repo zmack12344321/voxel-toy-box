@@ -6,6 +6,7 @@
  */
 
 import { DeclarativeShapeCommand } from '../../models/declarativeTypes';
+import type { SceneWater } from '../../types';
 import { RasterizerState } from './helpers';
 import { handleBasicCommand } from './handlers/basicHandlers';
 import { handleEnvironmentCommand } from './handlers/environmentHandlers';
@@ -14,9 +15,9 @@ import { handleComplexCommand } from './handlers/complexHandlers';
 export function executeCommand(
   state: RasterizerState,
   cmd: DeclarativeShapeCommand,
-  waterRef: { value: { level: number; extent: [number, number]; color: number; opacity: number } | null },
+  waterRef: { value: SceneWater | null },
   self: { executeCommand: (cmd: DeclarativeShapeCommand) => void }
-): { water: { level: number; extent: [number, number]; color: number; opacity: number } | null } {
+): { water: SceneWater | null } {
   if (handleBasicCommand(state, cmd)) {
     return { water: null };
   }

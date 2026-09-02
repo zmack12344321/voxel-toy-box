@@ -9,13 +9,11 @@ import { UIOverlay } from './components/hud';
 import { BottomPromptBar } from './components/hud/BottomPromptBar';
 import { ModelLibraryDrawer } from './components/library';
 import { JsonModal, PromptModal } from './components/modals';
-import { ModelRegistry } from './models/registry';
 import { useEngineStore, useUIStore } from './store';
+import { modelCatalogService, sceneController } from './services/application';
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const setEngine = useEngineStore((s) => s.setEngine);
   const setAppState = useEngineStore((s) => s.setAppState);
   const setVoxelCount = useEngineStore((s) => s.setVoxelCount);
   const setMeshStats = useEngineStore((s) => s.setMeshStats);
@@ -31,21 +29,17 @@ const App: React.FC = () => {
       setVoxelCount,
       setMeshStats,
     );
-    setEngine(engine);
+    sceneController.attach(engine);
 
     // Initial model: Eagle
-    const initialPreset = ModelRegistry.getPresetById('eagle') ?? ModelRegistry.getAllPresets()[0];
+    const initialPreset = modelCatalogService.findPresetById('eagle') ?? modelCatalogService.listPresets()[0];
     if (initialPreset) {
-      engine.loadInitialModel(initialPreset.generate());
-      useUIStore.getState().setCurrentBaseModel(initialPreset.name);
+      useUIStore.getState().selectPreset(initialPreset);
     }
 
-    const handleResize = () => engine.handleResize();
-    window.addEventListener('resize', handleResize);
-
     return () => {
-      window.removeEventListener('resize', handleResize);
-      engine.cleanup();
+      sceneController.cleanup();
+      sceneController.detach();
     };
   }, []);
 

@@ -1,14 +1,13 @@
 /**
  * Zustand store for UI / modal / model-library state.
- * Engine actions that affect model state (load, rebuild, prompt, import) live here
- * so components can call them without prop-drilling.
+ * Model actions dispatch through application services so components do not own
+ * renderer or generation dependencies.
  */
 import { create } from 'zustand';
 import { SavedModel, VoxelData } from '../types';
 import { ModelPreset } from '../models/types';
-import { ModelRegistry } from '../models/registry';
 import { useEngineStore } from './useEngineStore';
-import { GeminiVoxelService } from '../services/ai/GeminiVoxelService';
+import { generationService, modelCatalogService, sceneController } from '../services/application';
 import { parseVoxelJson } from '../services/VoxelUtils';
 
 interface UIStore {
@@ -27,6 +26,7 @@ interface UIStore {
   // Actions — preset / model
   loadPresets: () => void;
   selectPreset: (preset: ModelPreset) => void;
+  selectPresetById: (id: string) => void;
   rebuildPreset: (preset: ModelPreset) => void;
   selectCustomBuild: (model: SavedModel) => void;
   selectCustomRebuild: (model: SavedModel) => void;
@@ -51,8 +51,6 @@ interface UIStore {
   setJsonData: (data: string) => void;
 }
 
-const eng = () => useEngineStore.getState().engine;
-
 export const useUIStore = create<UIStore>((set, get) => ({
   presets: [],
   currentBaseModel: 'Majestic Eagle',
@@ -66,31 +64,46 @@ export const useUIStore = create<UIStore>((set, get) => ({
   showWelcome: false,
   jsonData: '',
 
-  loadPresets: () => set({ presets: ModelRegistry.getAllPresets() }),
+  loadPresets: () => set({ presets: modelCatalogService.listPresets() }),
 
   selectPreset: (preset) => {
     console.log(`[UIStore] Selecting preset: ${preset.name}`);
-    const data = preset.generate();
-    eng()?.loadInitialModel(data);
+    if (preset.recipe) {
+      sceneController.loadDeclarativePayload(preset.recipe);
+    } else if (preset.sceneSpec) {
+      sceneController.loadSceneSpec(preset.sceneSpec);
+    } else if (preset.scene) {
+      sceneController.loadScene(preset.scene);
+    } else {
+      const data = preset.generate();
+      sceneController.loadModel(data);
+    }
     set({ currentBaseModel: preset.name });
+  },
+
+  selectPresetById: (id) => {
+    const preset = modelCatalogService.findPresetById(id);
+    if (preset) get().selectPreset(preset);
   },
 
   rebuildPreset: (preset) => {
     console.log(`[UIStore] Rebuilding preset into: ${preset.name}`);
-    const data = preset.generate();
-    eng()?.rebuild(data);
+    if (preset.recipe) sceneController.rebuildDeclarativePayload(preset.recipe);
+    else if (preset.sceneSpec) sceneController.rebuildSceneSpec(preset.sceneSpec);
+    else if (preset.scene) sceneController.rebuildScene(preset.scene);
+    else sceneController.rebuild(preset.generate());
     set({ currentBaseModel: preset.name });
   },
 
   selectCustomBuild: (model) => {
     console.log(`[UIStore] Selecting custom build: ${model.name}`);
-    eng()?.loadInitialModel(model.data);
+    sceneController.loadScene({ data: model.data, water: model.water, animatedEntities: model.animatedEntities });
     set({ currentBaseModel: model.name });
   },
 
   selectCustomRebuild: (model) => {
     console.log(`[UIStore] Selecting custom rebuild: ${model.name}`);
-    eng()?.rebuild(model.data);
+    sceneController.rebuildScene({ data: model.data, water: model.water, animatedEntities: model.animatedEntities });
     set({ currentBaseModel: model.name });
   },
 
@@ -106,10 +119,10 @@ export const useUIStore = create<UIStore>((set, get) => ({
     try {
       const voxelData: VoxelData[] = parseVoxelJson(jsonStr);
 
-      eng()?.loadInitialModel(voxelData);
+      sceneController.loadModel(voxelData);
       const customName = `Imported Build (${voxelData.length} voxels)`;
       set({ currentBaseModel: customName });
-      ModelRegistry.createCustomPreset(customName, voxelData);
+      modelCatalogService.registerCustomPreset(customName, { data: voxelData });
       get().loadPresets();
       get().addCustomBuild({ name: customName, data: voxelData });
     } catch (e) {
@@ -119,7 +132,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   showJsonModal: () => {
-    const data = eng()?.getJsonData() ?? '';
+    const data = sceneController.getJsonData();
     set({ jsonData: data, isJsonModalOpen: true, jsonModalMode: 'view' });
   },
 
@@ -130,32 +143,44 @@ export const useUIStore = create<UIStore>((set, get) => ({
     set({ isPromptModalOpen: false });
 
     try {
-      const availableColors = eng()?.getUniqueColors() ?? [];
       const currentVoxelCount = useEngineStore.getState().voxelCount;
-      const currentVolumeEstimate = currentVoxelCount > 0 ? currentVoxelCount : 800;
-
-      const result = await GeminiVoxelService.generateModel({
+      const result = await generationService.generateAndApply({
         prompt,
         mode: promptMode,
         detailLevel,
-        availableColors,
-        currentVolumeEstimate,
+        currentVoxelCount,
       });
 
       if (promptMode === 'create') {
-        eng()?.loadInitialModel(result.data, result.water);
         set({ currentBaseModel: result.name });
-        get().addCustomBuild({ name: result.name, data: result.data });
-        ModelRegistry.createCustomPreset(result.name, result.data);
+        get().addCustomBuild({
+          name: result.name,
+          data: result.data,
+          water: result.water,
+          animatedEntities: result.animatedEntities,
+          prompt,
+        });
+      modelCatalogService.registerCustomPreset(result.name, {
+        data: result.data,
+        water: result.water,
+        animatedEntities: result.animatedEntities,
+      });
         get().loadPresets();
       } else {
-        eng()?.rebuild(result.data, result.water);
         set({ currentBaseModel: result.name });
-        get().addCustomRebuild({ name: result.name, data: result.data, baseModel: currentBaseModel });
+        get().addCustomRebuild({
+          name: result.name,
+          data: result.data,
+          water: result.water,
+          animatedEntities: result.animatedEntities,
+          baseModel: currentBaseModel,
+          prompt,
+        });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Model generation failed:', err);
-      alert(`Model generation encountered an issue: ${err?.message || 'Please try again.'}`);
+      const message = err instanceof Error ? err.message : 'Please try again.';
+      alert(`Model generation encountered an issue: ${message}`);
     } finally {
       useEngineStore.getState().setIsGenerating(false);
     }

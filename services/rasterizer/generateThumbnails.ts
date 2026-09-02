@@ -38,6 +38,10 @@ export function renderVoxelThumbnailDataUrl(
   renderer.setSize(width, height);
   renderer.setPixelRatio(1);
   renderer.setClearColor(options.backgroundColor || 0x000000, 0);
+  let geometry: THREE.BufferGeometry | null = null;
+  let material: THREE.MeshStandardMaterial | null = null;
+
+  try {
 
   // Create 3D Scene
   const scene = new THREE.Scene();
@@ -56,7 +60,8 @@ export function renderVoxelThumbnailDataUrl(
 
   // Generate Voxel Mesh
   const meshResult = VoxelMesher.buildCulledGeometry(voxels);
-  const material = new THREE.MeshStandardMaterial({
+  geometry = meshResult.geometry;
+  material = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.35,
     metalness: 0.1,
@@ -86,13 +91,13 @@ export function renderVoxelThumbnailDataUrl(
   // Render Frame
   renderer.render(scene, camera);
   const dataUrl = canvas.toDataURL('image/png');
-
-  // Clean up WebGL resources
-  meshResult.geometry.dispose();
-  material.dispose();
-  renderer.dispose();
-
   return dataUrl;
+  } finally {
+    // Clean up WebGL resources even if rendering or encoding throws.
+    geometry?.dispose();
+    material?.dispose();
+    renderer.dispose();
+  }
 }
 
 /**

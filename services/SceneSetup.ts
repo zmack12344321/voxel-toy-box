@@ -9,6 +9,7 @@ import { StudioLightingManager } from './lighting/StudioLightingManager';
 export { THEME_PRESETS };
 
 export class SceneSetup {
+  private readonly container: HTMLElement;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
@@ -21,14 +22,16 @@ export class SceneSetup {
   // Environment & Gizmo Managers
   public lighting: StudioLightingManager;
   public viewHelperManager: ViewHelperManager;
+  private disposed = false;
 
   constructor(container: HTMLElement) {
+    this.container = container;
     container.innerHTML = '';
     this.scene = new THREE.Scene();
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
-    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    this.camera.position.set(32, 28, 55);
+    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+    this.camera.position.set(120, 100, 200);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(width, height);
@@ -48,9 +51,9 @@ export class SceneSetup {
     this.controls.autoRotate = false;
     this.controls.autoRotateSpeed = 0.6;
     this.controls.maxPolarAngle = Math.PI / 2 + 0.05;
-    this.controls.minDistance = 10;
-    this.controls.maxDistance = 150;
-    this.controls.target.set(0, 8, 0);
+    this.controls.minDistance = 2;
+    this.controls.maxDistance = 5000;
+    this.controls.target.set(0, 30, 0);
     this.controls.update();
 
     // Clean neutral studio background
@@ -94,8 +97,8 @@ export class SceneSetup {
   get hemisphereLight(): THREE.HemisphereLight { return this.lighting.hemisphereLight; }
 
   handleResize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const w = this.container.clientWidth || window.innerWidth;
+    const h = this.container.clientHeight || window.innerHeight;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
@@ -108,13 +111,15 @@ export class SceneSetup {
   setTheme(theme: SceneTheme) {
     const p = THEME_PRESETS[theme];
     this.scene.background = new THREE.Color(p.bg);
-    (this.scene.fog as THREE.Fog).color.set(p.bg);
+    this.fogInstance.color.set(p.bg);
+    if (this.scene.fog) this.scene.fog.color.copy(this.fogInstance.color);
     this.floorMat.color.set(p.floor);
     this.ambientLight.intensity = p.ambientIntensity;
     this.keyLight.color.set(p.keyLightColor);
     if (this.grid) {
       const isVisible = this.grid.visible;
       this.scene.remove(this.grid);
+      this.grid.geometry.dispose();
       (this.grid.material as THREE.Material).dispose();
       this.grid = new THREE.GridHelper(100, 50, p.gridMain, p.gridSub);
       this.grid.position.y = CONFIG.FLOOR_Y + 0.01;
@@ -152,12 +157,15 @@ export class SceneSetup {
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.lighting.dispose(this.scene);
     this.viewHelperManager.dispose();
     this.controls.dispose();
     if (this.renderer.domElement && this.renderer.domElement.parentElement) {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
     }
+    this.renderer.renderLists.dispose();
     this.renderer.dispose();
     this.scene.traverse((obj: THREE.Object3D) => {
       if ((obj as THREE.Mesh).isMesh) {

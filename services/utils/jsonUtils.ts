@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { SimulationVoxel } from '../../types';
+import { SimulationVoxel, VoxelData } from '../../types';
 
 export function getJsonData(voxels: SimulationVoxel[]): string {
   return JSON.stringify(
@@ -24,17 +24,18 @@ export function getUniqueColors(voxels: SimulationVoxel[]): string[] {
   return Array.from(set).sort();
 }
 
-export function parseVoxelJson(jsonStr: string) {
-  const rawData = JSON.parse(jsonStr);
+export function parseVoxelJson(jsonStr: string): VoxelData[] {
+  const rawData: unknown = JSON.parse(jsonStr);
   if (!Array.isArray(rawData)) throw new Error('JSON must be an array');
 
-  return rawData.map((v: any) => {
-    let colorVal = v.c || v.color;
+  return rawData.map((value: unknown) => {
+    const v = isRecord(value) ? value : {};
+    let colorVal = v.c ?? v.color;
     let colorInt = 0xCCCCCC;
 
     if (typeof colorVal === 'string') {
-      if (colorVal.startsWith('#')) colorVal = colorVal.substring(1);
-      colorInt = parseInt(colorVal, 16);
+      const colorText = colorVal.startsWith('#') ? colorVal.substring(1) : colorVal;
+      colorInt = parseInt(colorText, 16);
     } else if (typeof colorVal === 'number') {
       colorInt = colorVal;
     }
@@ -46,4 +47,8 @@ export function parseVoxelJson(jsonStr: string) {
       color: isNaN(colorInt) ? 0xCCCCCC : colorInt,
     };
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

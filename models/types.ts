@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import { VoxelData } from '../types';
+import { ScenePayload, VoxelData } from '../types';
+import { DeclarativeModelPayload, SceneSpec } from './declarativeTypes';
 
 export type ModelCategory = 'creatures' | 'scifi_mech' | 'architecture' | 'objects';
 
@@ -17,6 +18,10 @@ export interface ModelPreset {
   iconName: 'Bird' | 'Cat' | 'Rabbit' | 'Users' | 'Castle' | 'Bot' | 'Rocket' | 'Sparkles' | 'TreePine' | 'Shield';
   palettePreview: string[];
   voxelCount?: number;
+  /** @deprecated Use sceneSpec for new declarative presets. */
+  recipe?: DeclarativeModelPayload;
+  sceneSpec?: SceneSpec;
+  scene?: ScenePayload;
   generate: () => VoxelData[];
 }
 
@@ -24,6 +29,7 @@ export interface BoxVolume {
   min: [number, number, number]; // [x1, y1, z1]
   max: [number, number, number]; // [x2, y2, z2]
   color: string | number;
+  symmetricX?: boolean;
 }
 
 export interface DetailedVoxelModelPayload {

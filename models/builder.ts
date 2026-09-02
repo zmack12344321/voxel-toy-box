@@ -156,10 +156,34 @@ export class VoxelBuilder {
 export function compileDetailedPayload(payload: DetailedVoxelModelPayload): VoxelData[] {
   const builder = new VoxelBuilder();
 
-  payload.boxes.forEach((vol: BoxVolume) => {
+  (payload.boxes ?? []).forEach((vol: BoxVolume) => {
     const [x1, y1, z1] = vol.min;
     const [x2, y2, z2] = vol.max;
-    builder.box(x1, y1, z1, x2, y2, z2, vol.color);
+    if (vol.symmetricX) {
+      builder.boxSymmetricX(x1, y1, z1, x2, y2, z2, vol.color);
+    } else {
+      builder.box(x1, y1, z1, x2, y2, z2, vol.color);
+    }
+  });
+
+  (payload.cylinders ?? []).forEach((cylinder) => {
+    if (cylinder.symmetricX) {
+      builder.cylinderYSymmetricX(cylinder.cx, cylinder.y1, cylinder.y2, cylinder.cz, cylinder.radius, cylinder.color);
+    } else {
+      builder.cylinderY(cylinder.cx, cylinder.y1, cylinder.y2, cylinder.cz, cylinder.radius, cylinder.color);
+    }
+  });
+
+  (payload.spheres ?? []).forEach((sphere) => {
+    if (sphere.symmetricX) {
+      builder.sphereSymmetricX(sphere.cx, sphere.cy, sphere.cz, sphere.radius, sphere.color);
+    } else {
+      builder.sphere(sphere.cx, sphere.cy, sphere.cz, sphere.radius, sphere.color);
+    }
+  });
+
+  (payload.voxels ?? []).forEach((voxel) => {
+    builder.set(voxel.x, voxel.y, voxel.z, voxel.color);
   });
 
   return builder.cullInternalVoxels().applyLightingShading().build();

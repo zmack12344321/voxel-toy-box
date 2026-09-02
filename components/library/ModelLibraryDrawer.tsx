@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { History, Sparkles } from 'lucide-react';
 import { ModelPreset } from '../../models/types';
-import { ModelRegistry } from '../../models/registry';
+import { SavedModel } from '../../types';
 import { useUIStore } from '../../store/useUIStore';
 
 import { LibraryHeader } from './LibraryHeader';
@@ -18,15 +18,7 @@ import { ModelHoverCard, HoveredModelInfo } from './ModelHoverCard';
 import { LibraryEmptyState } from './LibraryEmptyState';
 import { LibraryFooter } from './LibraryFooter';
 
-export interface CustomVoxelBuild {
-  id: string;
-  name: string;
-  timestamp: number;
-  voxels: any[];
-  prompt?: string;
-  palettePreview?: string[];
-  thumbnailUrl?: string;
-}
+export type CustomVoxelBuild = SavedModel;
 
 interface ModelLibraryDrawerProps {
   isOpen?: boolean;
@@ -56,7 +48,8 @@ export const ModelLibraryDrawer: React.FC<ModelLibraryDrawerProps> = (props) => 
   const storeIsOpen = useUIStore((s) => s.isModelLibraryOpen);
   const storeSetOpen = useUIStore((s) => s.setModelLibraryOpen);
   const storeCurrentModel = useUIStore((s) => s.currentBaseModel);
-  const storeSelectPreset = useUIStore((s) => s.selectPreset);
+  const storeSelectPresetById = useUIStore((s) => s.selectPresetById);
+  const storePresets = useUIStore((s) => s.presets);
   const storeCustomBuilds = useUIStore((s) => s.customBuilds);
   const storeSelectCustomBuild = useUIStore((s) => s.selectCustomBuild);
 
@@ -64,16 +57,15 @@ export const ModelLibraryDrawer: React.FC<ModelLibraryDrawerProps> = (props) => 
   const onClose = props.onClose ?? (() => storeSetOpen(false));
   const currentModelId = props.currentModelId ?? storeCurrentModel;
   const onSelectModel = props.onSelectModel ?? ((id: string) => {
-    const preset = ModelRegistry.getPresetById(id);
-    if (preset) storeSelectPreset(preset);
+    storeSelectPresetById(id);
   });
-  const customBuilds = props.customBuilds ?? (storeCustomBuilds as any[]);
-  const onSelectCustomBuild = props.onSelectCustomBuild ?? ((build: any) => storeSelectCustomBuild(build));
+  const customBuilds = props.customBuilds ?? storeCustomBuilds;
+  const onSelectCustomBuild = props.onSelectCustomBuild ?? storeSelectCustomBuild;
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [hoveredModel, setHoveredModel] = useState<HoveredModelInfo | null>(null);
 
-  const presets = ModelRegistry.getAllPresets();
+  const presets = storePresets;
 
   const filteredPresets = presets.filter((preset) => {
     const matchesCategory = selectedCategory === 'all' || preset.category === selectedCategory;
@@ -151,10 +143,11 @@ export const ModelLibraryDrawer: React.FC<ModelLibraryDrawerProps> = (props) => 
                   </div>
                   <div className="space-y-1.5 mt-1">
                     {filteredCustomBuilds.map((build) => {
-                      const isCurrent = currentModelId === build.id;
+                      const buildId = build.id ?? build.name;
+                      const isCurrent = currentModelId === buildId;
                       return (
                         <ModelCardItem
-                          key={build.id}
+                          key={buildId}
                           name={build.name}
                           iconName="Sparkles"
                           palettePreview={build.palettePreview}
@@ -166,13 +159,13 @@ export const ModelLibraryDrawer: React.FC<ModelLibraryDrawerProps> = (props) => 
                           onMouseEnter={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
                             setHoveredModel({
-                              id: build.id,
+                              id: buildId,
                               name: build.name,
                               iconName: 'Sparkles',
                               description: build.prompt || 'Custom AI-generated 3D voxel sculpture',
                               palettePreview: build.palettePreview,
                               category: 'AI Sculpt',
-                              voxelCount: build.voxels?.length,
+                              voxelCount: build.data.length,
                               thumbnailUrl: build.thumbnailUrl,
                               topPos: rect.top,
                             });

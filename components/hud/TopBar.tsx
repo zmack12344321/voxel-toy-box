@@ -20,6 +20,7 @@ import { ModelStatusBadge } from './ModelStatusBadge';
 import { FloatingControls } from './FloatingControls';
 import { GuideModal } from '../modals/guide/GuideModal';
 import { useEngineStore, useSceneStore, useUIStore } from '../../store';
+import { sceneController } from '../../services/application';
 
 export const TopBar: React.FC = () => {
   const voxelCount = useEngineStore((s) => s.voxelCount);
@@ -29,7 +30,7 @@ export const TopBar: React.FC = () => {
 
   const handleResetCamera = () => {
     console.log('[TopBar] Reset camera clicked');
-    useEngineStore.getState().engine?.resetCamera();
+    sceneController.resetCamera();
   };
 
   const handleShowJson = () => {

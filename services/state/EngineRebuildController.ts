@@ -3,17 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import * as THREE from 'three';
 import { AppState, VoxelData, MeshStats, RenderMode, SceneWater } from '../../types';
-import { CONFIG } from '../../utils/voxelConstants';
 import { SceneSetup } from '../SceneSetup';
 import { VoxelStateManager } from '../state/VoxelStateManager';
 import { MeshLifecycleManager } from '../meshing/MeshLifecycleManager';
 import { VoxelPhysics } from '../physics/VoxelPhysics';
+import type { EnvironmentRenderer } from '../environment/contracts';
+import type { PhysicsConfig } from '../physics/VoxelPhysics';
 
 export class EngineRebuildController {
+  public constructor(private readonly physicsConfig: PhysicsConfig) {}
+
   public pendingRebuildTarget: VoxelData[] | null = null;
-  public pendingRebuildWater: SceneWater | null | undefined = undefined;
+  public pendingRebuildWater: SceneWater | null = null;
+
+  /** Invalidates an in-flight rebuild before a replacement scene is loaded. */
+  public cancelPending(): void {
+    this.pendingRebuildTarget = null;
+    this.pendingRebuildWater = null;
+  }
 
   public rebuild(
     sceneSetup: SceneSetup,
@@ -38,15 +46,18 @@ export class EngineRebuildController {
     const nextState = AppState.REBUILDING;
     onStateChange(nextState);
 
-    this.pendingRebuildTarget = targetModel;
-    this.pendingRebuildWater = water;
+    const targetSnapshot = targetModel.map(voxel => ({ ...voxel }));
+    this.pendingRebuildTarget = targetSnapshot;
+    this.pendingRebuildWater = water ? {
+      ...water,
+      extent: [...water.extent] as [number, number],
+    } : null;
 
     const { voxels, targets } = physics.initRebuild(
-      stateManager.voxels, targetModel, CONFIG
+      stateManager.voxels, targetSnapshot, this.physicsConfig
     );
     stateManager.voxels = voxels;
     stateManager.rebuildTargets = targets;
-    physics.rebuildStartTime = performance.now();
     
     meshLifecycle.ensureDynamicPhysicsCapacity(
       sceneSetup.scene, voxels.length, wireframe, shadows
@@ -62,14 +73,15 @@ export class EngineRebuildController {
     sceneSetup: SceneSetup,
     stateManager: VoxelStateManager,
     meshLifecycle: MeshLifecycleManager,
-    waterManager: { setup: (scene: THREE.Scene, water: SceneWater | null, fog: boolean) => void },
+    waterManager: EnvironmentRenderer,
     marchingResolution: number,
     marchingSmoothness: number,
     wireframe: boolean,
     shadows: boolean,
     renderMode: RenderMode,
     voxelSpacing: number,
-    onStatsChange: (stats: MeshStats) => void
+    onStatsChange: (stats: MeshStats) => void,
+    onCountChange: (count: number) => void,
   ): void {
     const targetModel = this.pendingRebuildTarget;
     const water = this.pendingRebuildWater;
@@ -79,8 +91,9 @@ export class EngineRebuildController {
 
     console.log('[VoxelEngine] Rebuild animation complete. Finalizing meshes.');
     meshLifecycle.clearAll(sceneSetup.scene);
+    stateManager.currentRawVoxelData = [...targetModel];
     const newVoxels = meshLifecycle.createAllMeshes(
-      sceneSetup.scene, targetModel,
+      sceneSetup.scene, stateManager.getActiveVoxelData(),
       {
         marchingRes: marchingResolution,
         marchingSmooth: marchingSmoothness,
@@ -92,11 +105,9 @@ export class EngineRebuildController {
       AppState.STABLE,
     );
     stateManager.voxels = newVoxels;
-    stateManager.currentRawVoxelData = [...targetModel];
     meshLifecycle.drawSegmentedMesh(stateManager.voxels, voxelSpacing);
+    onCountChange(newVoxels.length);
 
-    if (water !== undefined) {
-      waterManager.setup(sceneSetup.scene, water, sceneSetup.scene.fog !== null);
-    }
+    waterManager.setup(sceneSetup.scene, water, sceneSetup.scene.fog !== null);
   }
 }

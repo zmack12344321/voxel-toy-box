@@ -7,14 +7,44 @@
  */
 
 import { VoxelData, SceneWater } from '../../types';
+import type { AnimatedEntity as CompiledAnimatedEntity } from '../../types';
+export type { AnimatedEntity as CompiledAnimatedEntity } from '../../types';
 import { parseColor } from '../../models/builder';
-import { DeclarativeModelPayload, DeclarativeShapeCommand, PaletteEntry } from '../../models/declarativeTypes';
+import { DeclarativeModelPayload, DeclarativeShapeCommand, PaletteEntry, SceneSpec } from '../../models/declarativeTypes';
 import { RasterizerState, resolveColor } from './helpers';
 import { executeCommand as dispatchCommand } from './dispatcher';
 
+/**
+ * Prunes completely occluded (hidden inside) voxels that are surrounded
+ * by 6 orthogonal solid neighbors (+x, -x, +y, -y, +z, -z).
+ */
+export function pruneOccludedVoxels(map: Map<string, VoxelData>): VoxelData[] {
+  const visibleVoxels: VoxelData[] = [];
+
+  for (const v of map.values()) {
+    const x = v.x;
+    const y = v.y;
+    const z = v.z;
+
+    const hasTop    = map.has(`${x},${y + 1},${z}`);
+    const hasBottom = map.has(`${x},${y - 1},${z}`);
+    const hasLeft   = map.has(`${x - 1},${y},${z}`);
+    const hasRight  = map.has(`${x + 1},${y},${z}`);
+    const hasFront  = map.has(`${x},${y},${z + 1}`);
+    const hasBack   = map.has(`${x},${y},${z - 1}`);
+
+    // If missing AT LEAST ONE neighbor, it is an exposed surface voxel!
+    if (!hasTop || !hasBottom || !hasLeft || !hasRight || !hasFront || !hasBack) {
+      visibleVoxels.push(v);
+    }
+  }
+
+  return visibleVoxels;
+}
 export class DeclarativeRasterizer {
   private state: RasterizerState;
-  public water: { level: number; extent: [number, number]; color: number; opacity: number } | null = null;
+  public water: SceneWater | null = null;
+  private waterRef: { value: SceneWater | null } = { value: null };
 
   constructor(palette?: Record<string, PaletteEntry>) {
     const paletteMap = new Map<string, number>();
@@ -28,21 +58,24 @@ export class DeclarativeRasterizer {
   }
 
   public executeCommand(cmd: DeclarativeShapeCommand): void {
-    const waterRef = { value: this.water };
-    dispatchCommand(this.state, cmd, waterRef, { executeCommand: this.executeCommand.bind(this) });
-    this.water = waterRef.value;
+    dispatchCommand(this.state, cmd, this.waterRef, { executeCommand: this.executeCommand.bind(this) });
+    this.water = this.waterRef.value;
   }
 
   public build(): VoxelData[] {
-    return Array.from(this.state.map.values());
+    return pruneOccludedVoxels(this.state.map);
   }
 }
 
 /**
- * Compiles a declarative payload into a final centered VoxelData array
- * plus optional water metadata for the engine.
+ * Compiles a declarative payload into a final centered VoxelData array,
+ * compiled animated spline entities, plus optional water metadata for the engine.
  */
-export function compileDeclarativePayload(payload: DeclarativeModelPayload): { voxels: VoxelData[]; water: SceneWater | null } {
+export function compileDeclarativePayload(payload: DeclarativeModelPayload): {
+  voxels: VoxelData[];
+  water: SceneWater | null;
+  animatedEntities: CompiledAnimatedEntity[];
+} {
   const rasterizer = new DeclarativeRasterizer(payload.palette);
 
   if (payload.commands && Array.isArray(payload.commands)) {
@@ -51,8 +84,25 @@ export function compileDeclarativePayload(payload: DeclarativeModelPayload): { v
     }
   }
 
+  // Compile individual animated entities
+  const animatedEntities: CompiledAnimatedEntity[] = [];
+  if (payload.animatedEntities && Array.isArray(payload.animatedEntities)) {
+    for (const entityDesc of payload.animatedEntities) {
+      const entityRasterizer = new DeclarativeRasterizer(payload.palette);
+      for (const cmd of entityDesc.commands) {
+        entityRasterizer.executeCommand(cmd);
+      }
+      animatedEntities.push({
+        id: entityDesc.id,
+        waypoints: entityDesc.waypoints.map(point => [...point] as [number, number, number]),
+        speed: entityDesc.speed ?? 0.1,
+        voxels: entityRasterizer.build(),
+      });
+    }
+  }
+
   const rawVoxels = rasterizer.build();
-  if (rawVoxels.length === 0) return { voxels: [], water: null };
+  if (rawVoxels.length === 0) return { voxels: [], water: null, animatedEntities };
 
   let minX = Infinity, maxX = -Infinity;
   let minY = Infinity, maxY = -Infinity;
@@ -76,7 +126,7 @@ export function compileDeclarativePayload(payload: DeclarativeModelPayload): { v
     const w = rasterizer.water;
     water = {
       level: w.level - offsetY,
-      extent: w.extent,
+      extent: [...w.extent] as [number, number],
       color: w.color,
       opacity: w.opacity,
     };
@@ -90,5 +140,22 @@ export function compileDeclarativePayload(payload: DeclarativeModelPayload): { v
       color: v.color,
     })),
     water,
+    animatedEntities,
   };
+}
+
+/** Compiles canonical model/scene contracts through the legacy rasterizer adapter. */
+export function compileSceneSpec(spec: SceneSpec): ReturnType<typeof compileDeclarativePayload> {
+  const placementCommands = (spec.placementRules ?? []).map(rule => ({
+    ...rule,
+    op: 'scatter' as const,
+  }));
+  return compileDeclarativePayload({
+    ...spec.model,
+    commands: [
+      ...spec.model.commands,
+      ...(spec.sceneCommands ?? []),
+      ...placementCommands,
+    ],
+  });
 }

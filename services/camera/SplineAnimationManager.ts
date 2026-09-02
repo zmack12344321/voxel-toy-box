@@ -5,6 +5,15 @@
 
 import * as THREE from 'three';
 
+function stablePhase(id: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4294967296;
+}
+
 export interface AnimatedSplineEntity {
   id: string;
   group: THREE.Group;
@@ -23,10 +32,15 @@ export class SplineAnimationManager {
     id: string,
     objectGroup: THREE.Group,
     waypoints: Array<[number, number, number]>,
-    speed = 0.1
+    speed = 0.1,
+    scale = 1.0
   ): AnimatedSplineEntity {
     if (waypoints.length < 2) {
       throw new Error("Spline path requires at least 2 control waypoints.");
+    }
+
+    if (scale !== 1.0) {
+      objectGroup.scale.set(scale, scale, scale);
     }
 
     const points = waypoints.map(p => new THREE.Vector3(p[0], p[1], p[2]));
@@ -38,7 +52,7 @@ export class SplineAnimationManager {
       group: objectGroup,
       curve,
       speed,
-      t: Math.random() // Start at random point along path
+      t: stablePhase(id),
     };
 
     this.entities.push(entity);
