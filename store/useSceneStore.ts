@@ -3,7 +3,7 @@
  * Scene settings update local state and delegate runtime changes through SceneController.
  */
 import { create } from 'zustand';
-import { SceneSettings, SceneTheme, RenderMode } from '../types';
+import { SceneSettings, SceneTheme, RenderMode, WaterTuning } from '../types';
 import { sceneController } from '../services/application';
 
 const DEFAULTS: SceneSettings = {
@@ -19,7 +19,9 @@ const DEFAULTS: SceneSettings = {
   marchingSmoothness: 0.3,
   voxelDensity: 1.0,
   voxelSpacing: 1.0,
+  waterTuning: { oceanLevel: 0, bigWaveHeight: 1.2, bigWaveSpeed: 0.35, bigWaveSize: 2.2, smallWaveHeight: 0.25, smallWaveSpeed: 1.2, smallWaveSize: 7.5, causticsStrength: 0.8 },
 };
+const DEFAULT_WATER_TUNING = DEFAULTS.waterTuning;
 
 interface SceneStore extends SceneSettings {
   toggleAutoRotate: () => void;
@@ -34,6 +36,8 @@ interface SceneStore extends SceneSettings {
   setMarchingResolution: (v: number) => void;
   setVoxelDensity: (v: number) => void;
   setVoxelSpacing: (v: number) => void;
+  setWaterTuning: (values: Partial<WaterTuning>) => void;
+  resetWaterTuning: () => void;
 }
 
 export const useSceneStore = create<SceneStore>((set) => ({
@@ -128,4 +132,13 @@ export const useSceneStore = create<SceneStore>((set) => ({
       sceneController.setVoxelSpacing(voxelSpacing);
       return { voxelSpacing };
     }),
+  setWaterTuning: (values) =>
+    set((s) => {
+      const waterTuning = { ...s.waterTuning, ...values };
+      sceneController.setWaterTuning(values);
+      return { waterTuning };
+    }),
+  resetWaterTuning: () => {
+    set({ waterTuning: { ...DEFAULT_WATER_TUNING } });
+  },
 }));

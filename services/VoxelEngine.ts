@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { AppState, AnimatedEntity, ScenePayload, VoxelData, MeshStats, SceneTheme, RenderMode, SceneWater } from '../types';
+import { AppState, AnimatedEntity, ScenePayload, VoxelData, MeshStats, SceneTheme, RenderMode, SceneWater, WaterTuning } from '../types';
 import { SceneSetup } from './SceneSetup';
 import { VoxelStateManager } from './state/VoxelStateManager';
 import { MeshLifecycleManager } from './meshing/MeshLifecycleManager';
@@ -49,7 +49,7 @@ export class VoxelEngine implements SceneRuntime {
   private readonly renderCoordinator = new EngineRenderCoordinator();
   private readonly animatedEntityRenderer = new AnimatedEntityRenderer();
   private readonly modelLoader = new EngineModelLoader();
-  private readonly handleWindowResize = () => this.sceneSetup.handleResize();
+  private readonly handleWindowResize = () => this.handleResize();
   private disposed = false;
 
   constructor(
@@ -142,7 +142,14 @@ export class VoxelEngine implements SceneRuntime {
     this.meshLifecycle.updateVisibility(this.stateManager.voxels.length, this.settings.renderMode, this.state, this.onStatsChange);
   }
 
-  public handleResize() { this.sceneSetup.handleResize(); }
+  public handleResize() {
+    this.sceneSetup.handleResize();
+    this.waterManager.resize?.(
+      this.sceneSetup.renderer.domElement.clientWidth || window.innerWidth,
+      this.sceneSetup.renderer.domElement.clientHeight || window.innerHeight,
+      this.sceneSetup.renderer.getPixelRatio(),
+    );
+  }
 
   public cleanup() {
     if (this.disposed) return;
@@ -238,6 +245,9 @@ export class VoxelEngine implements SceneRuntime {
     console.log(`[VoxelEngine] Voxel Spacing set to ${this.settings.voxelSpacing}`);
     this.meshLifecycle.drawSegmentedMesh(this.stateManager.voxels, this.settings.voxelSpacing);
   }
+
+  public getWaterTuning(): WaterTuning | null { return this.waterManager.getTuning?.() ?? null; }
+  public setWaterTuning(values: Partial<WaterTuning>): void { this.waterManager.setTuning?.(values); }
 
   public getJsonData(): string { return getJsonData(this.stateManager.voxels); }
   public getUniqueColors(): string[] { return getUniqueColors(this.stateManager.voxels); }

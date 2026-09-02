@@ -101,6 +101,7 @@ export interface SceneSettings {
   marchingSmoothness: number;
   voxelDensity: number;
   voxelSpacing: number;
+  waterTuning: WaterTuning;
 }
 
 export interface SceneWater {
@@ -108,4 +109,15 @@ export interface SceneWater {
   extent: [number, number];
   color: number;
   opacity: number;
+}
+
+export interface WaterTuning {
+  oceanLevel: number;
+  bigWaveHeight: number;
+  bigWaveSpeed: number;
+  bigWaveSize: number;
+  smallWaveHeight: number;
+  smallWaveSpeed: number;
+  smallWaveSize: number;
+  causticsStrength: number;
 }

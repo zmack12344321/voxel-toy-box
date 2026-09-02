@@ -1,5 +1,5 @@
 import type { DeclarativeModelPayload, SceneSpec } from '../../models/declarativeTypes';
-import type { AnimatedEntity, RenderMode, ScenePayload, SceneTheme, SceneWater, VoxelData } from '../../types';
+import type { AnimatedEntity, RenderMode, ScenePayload, SceneTheme, SceneWater, WaterTuning, VoxelData } from '../../types';
 import { compileDeclarativePayload, compileSceneSpec } from '../rasterizer';
 import type { SceneRuntime } from './contracts';
 import type * as THREE from 'three';
@@ -70,6 +70,8 @@ export class SceneController {
   public setMarchingResolution(value: number): void { this.runtime?.setMarchingResolution(value); }
   public setVoxelDensity(value: number): void { this.runtime?.setVoxelDensity(value); }
   public setVoxelSpacing(value: number): void { this.runtime?.setVoxelSpacing(value); }
+  public getWaterTuning(): WaterTuning | null { return this.runtime?.getWaterTuning?.() ?? null; }
+  public setWaterTuning(values: Partial<WaterTuning>): void { this.runtime?.setWaterTuning?.(values); }
 }
 
 export const sceneController = new SceneController();

@@ -13,9 +13,13 @@ export interface RenderContext {
 export class EngineRenderCoordinator {
   public render(delta: number, context: RenderContext): void {
     context.waterManager.update(delta);
+    context.waterManager.renderReflection?.();
+    context.waterManager.renderRefraction?.();
+    context.waterManager.renderCaustics?.();
+    context.waterManager.renderSurface?.();
     context.splineAnimationManager.update(delta, context.sceneSetup.scene);
     context.sceneSetup.controls.update();
-    context.sceneSetup.renderer.render(context.sceneSetup.scene, context.sceneSetup.camera);
+    context.sceneSetup.composer.render(delta);
     context.sceneSetup.renderGizmo(delta);
   }
 }

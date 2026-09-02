@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { AnimatedEntity, RenderMode, ScenePayload, SceneTheme, SceneWater, VoxelData } from '../../types';
+import type { AnimatedEntity, RenderMode, ScenePayload, SceneTheme, SceneWater, WaterTuning, VoxelData } from '../../types';
 
 /** Runtime operations exposed to the application layer. */
 export interface SceneRuntime {
@@ -26,4 +26,6 @@ export interface SceneRuntime {
   setMarchingResolution(value: number): void;
   setVoxelDensity(value: number): void;
   setVoxelSpacing(value: number): void;
+  getWaterTuning?(): WaterTuning | null;
+  setWaterTuning?(values: Partial<WaterTuning>): void;
 }

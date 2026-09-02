@@ -5,20 +5,24 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Box, Layers, Sparkles } from 'lucide-react';
+import { Box, Layers, Sparkles, Waves } from 'lucide-react';
 import { RenderMode } from '../../types';
 import { TactileButton } from '../ui/buttons';
 import { DropdownSliderItem } from '../ui/dropdown';
 import { THEME_SURFACES, dropdownMenuVariants } from '../../theme/system';
 import { useSceneStore } from '../../store';
+import { sceneController } from '../../services/application';
 
 export const FloatingControls: React.FC = () => {
   const scene = useSceneStore();
+  const waterTuning = sceneController.getWaterTuning() ?? scene.waterTuning;
 
   const [isSmoothMenuOpen, setIsSmoothMenuOpen] = useState(true);
   const [isNormalMenuOpen, setIsNormalMenuOpen] = useState(true);
+  const [isWaterMenuOpen, setIsWaterMenuOpen] = useState(false);
   const smoothMenuRef = useRef<HTMLDivElement>(null);
   const normalMenuRef = useRef<HTMLDivElement>(null);
+  const waterMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scene.renderMode === RenderMode.SMOOTH_MARCHING) {
@@ -36,6 +40,9 @@ export const FloatingControls: React.FC = () => {
       }
       if (normalMenuRef.current && !normalMenuRef.current.contains(event.target as Node)) {
         setIsNormalMenuOpen(false);
+      }
+      if (waterMenuRef.current && !waterMenuRef.current.contains(event.target as Node)) {
+        setIsWaterMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -137,6 +144,36 @@ export const FloatingControls: React.FC = () => {
                 valueDisplay={`${scene.marchingResolution}³`}
                 onChange={scene.setMarchingResolution}
               />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="relative" ref={waterMenuRef}>
+        <TactileButton
+          onClick={() => setIsWaterMenuOpen(prev => !prev)}
+          color={isWaterMenuOpen ? 'sky' : 'slate'}
+          icon={<Waves size={16} strokeWidth={2.5} />}
+          label="Water Tuning"
+        />
+        <AnimatePresence>
+          {isWaterMenuOpen && (
+            <motion.div
+              variants={dropdownMenuVariants('right')}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className={`absolute top-0 left-full ml-3 w-72 ${THEME_SURFACES.floatingMenu} shadow-2xl border border-cyan-200/90 bg-white/98 backdrop-blur-md p-2 z-50 flex flex-col gap-1`}
+            >
+              <div className="px-2 py-1 text-[10px] font-bold tracking-widest text-cyan-700">WATER TUNING</div>
+              <DropdownSliderItem icon={<Waves size={15} />} label="Ocean Height" value={waterTuning.oceanLevel} min={-100} max={100} step={0.5} valueDisplay={waterTuning.oceanLevel.toFixed(1)} onChange={v => scene.setWaterTuning({ oceanLevel: v })} />
+              <DropdownSliderItem icon={<Waves size={15} />} label="Big Wave Height" value={waterTuning.bigWaveHeight} min={0} max={5} step={0.05} valueDisplay={waterTuning.bigWaveHeight.toFixed(2)} onChange={v => scene.setWaterTuning({ bigWaveHeight: v })} />
+              <DropdownSliderItem icon={<Waves size={15} />} label="Big Wave Speed" value={waterTuning.bigWaveSpeed} min={0} max={5} step={0.05} valueDisplay={waterTuning.bigWaveSpeed.toFixed(2)} onChange={v => scene.setWaterTuning({ bigWaveSpeed: v })} />
+              <DropdownSliderItem icon={<Waves size={15} />} label="Big Wave Size" value={waterTuning.bigWaveSize} min={0.05} max={15} step={0.05} valueDisplay={waterTuning.bigWaveSize.toFixed(2)} onChange={v => scene.setWaterTuning({ bigWaveSize: v })} />
+              <DropdownSliderItem icon={<Waves size={15} />} label="Small Wave Height" value={waterTuning.smallWaveHeight} min={0} max={2} step={0.02} valueDisplay={waterTuning.smallWaveHeight.toFixed(2)} onChange={v => scene.setWaterTuning({ smallWaveHeight: v })} />
+              <DropdownSliderItem icon={<Waves size={15} />} label="Small Wave Speed" value={waterTuning.smallWaveSpeed} min={0} max={10} step={0.05} valueDisplay={waterTuning.smallWaveSpeed.toFixed(2)} onChange={v => scene.setWaterTuning({ smallWaveSpeed: v })} />
+              <DropdownSliderItem icon={<Waves size={15} />} label="Small Wave Size" value={waterTuning.smallWaveSize} min={0.05} max={30} step={0.05} valueDisplay={waterTuning.smallWaveSize.toFixed(2)} onChange={v => scene.setWaterTuning({ smallWaveSize: v })} />
+              <DropdownSliderItem icon={<Sparkles size={15} />} label="Caustics Strength" value={waterTuning.causticsStrength} min={0} max={5} step={0.05} valueDisplay={waterTuning.causticsStrength.toFixed(2)} onChange={v => scene.setWaterTuning({ causticsStrength: v })} />
             </motion.div>
           )}
         </AnimatePresence>

@@ -5,6 +5,10 @@ import { CONFIG } from '../utils/voxelConstants';
 import { THEME_PRESETS } from './presets/themePresets';
 import { ViewHelperManager } from './environment/ViewHelperManager';
 import { StudioLightingManager } from './lighting/StudioLightingManager';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 export { THEME_PRESETS };
 
@@ -13,6 +17,7 @@ export class SceneSetup {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
+  composer: EffectComposer;
   controls: OrbitControls;
   floor: THREE.Mesh;
   floorMat: THREE.MeshStandardMaterial;
@@ -34,12 +39,20 @@ export class SceneSetup {
     this.camera.position.set(120, 100, 200);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.scene.userData.renderer = this.renderer;
+    this.scene.userData.camera = this.camera;
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.composer = new EffectComposer(this.renderer);
+    this.scene.userData.composer = this.composer;
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.composer.addPass(new UnrealBloomPass(new THREE.Vector2(width, height), 0.35, 0.55, 0.88));
+    this.composer.addPass(new OutputPass());
     this.renderer.domElement.style.width = '100%';
     this.renderer.domElement.style.height = '100%';
     this.renderer.domElement.style.display = 'block';
@@ -102,6 +115,7 @@ export class SceneSetup {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    this.composer.setSize(w, h);
   }
 
   renderGizmo(delta: number) {
@@ -166,6 +180,7 @@ export class SceneSetup {
       this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
     }
     this.renderer.renderLists.dispose();
+    this.composer.dispose();
     this.renderer.dispose();
     this.scene.traverse((obj: THREE.Object3D) => {
       if ((obj as THREE.Mesh).isMesh) {

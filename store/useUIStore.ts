@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { SavedModel, VoxelData } from '../types';
 import { ModelPreset } from '../models/types';
 import { useEngineStore } from './useEngineStore';
+import { useSceneStore } from './useSceneStore';
 import { generationService, modelCatalogService, sceneController } from '../services/application';
 import { parseVoxelJson } from '../services/VoxelUtils';
 
@@ -78,6 +79,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       const data = preset.generate();
       sceneController.loadModel(data);
     }
+    useSceneStore.getState().resetWaterTuning();
     set({ currentBaseModel: preset.name });
   },
 
@@ -92,18 +94,21 @@ export const useUIStore = create<UIStore>((set, get) => ({
     else if (preset.sceneSpec) sceneController.rebuildSceneSpec(preset.sceneSpec);
     else if (preset.scene) sceneController.rebuildScene(preset.scene);
     else sceneController.rebuild(preset.generate());
+    useSceneStore.getState().resetWaterTuning();
     set({ currentBaseModel: preset.name });
   },
 
   selectCustomBuild: (model) => {
     console.log(`[UIStore] Selecting custom build: ${model.name}`);
     sceneController.loadScene({ data: model.data, water: model.water, animatedEntities: model.animatedEntities });
+    useSceneStore.getState().resetWaterTuning();
     set({ currentBaseModel: model.name });
   },
 
   selectCustomRebuild: (model) => {
     console.log(`[UIStore] Selecting custom rebuild: ${model.name}`);
     sceneController.rebuildScene({ data: model.data, water: model.water, animatedEntities: model.animatedEntities });
+    useSceneStore.getState().resetWaterTuning();
     set({ currentBaseModel: model.name });
   },
 
@@ -121,6 +126,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
       sceneController.loadModel(voxelData);
       const customName = `Imported Build (${voxelData.length} voxels)`;
+      useSceneStore.getState().resetWaterTuning();
       set({ currentBaseModel: customName });
       modelCatalogService.registerCustomPreset(customName, { data: voxelData });
       get().loadPresets();
@@ -152,6 +158,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       });
 
       if (promptMode === 'create') {
+        useSceneStore.getState().resetWaterTuning();
         set({ currentBaseModel: result.name });
         get().addCustomBuild({
           name: result.name,
@@ -167,6 +174,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       });
         get().loadPresets();
       } else {
+        useSceneStore.getState().resetWaterTuning();
         set({ currentBaseModel: result.name });
         get().addCustomRebuild({
           name: result.name,
